@@ -1,0 +1,6 @@
+# Riftline Nakama config (stub)
+logger:
+  level: "info"
+runtime:
+  js:
+    path: "./modules/ts/build"
