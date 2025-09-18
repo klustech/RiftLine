@@ -1,0 +1,23 @@
+{
+  "name": "riftline-chain",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy:core": "hardhat run scripts/00_deploy_core.ts --network sepolia",
+    "seed:servers": "hardhat run scripts/01_seed_servers_caps.ts --network sepolia",
+    "seed:templates": "hardhat run scripts/02_define_templates_and_mint.ts --network sepolia",
+    "seed:auctions": "hardhat run scripts/03_mint_licenses_and_create_auctions.ts --network sepolia",
+    "verify-all": "hardhat verify --list-networks && echo 'Use npx hardhat verify <addr> <args>'"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "@openzeppelin/hardhat-upgrades": "^3.1.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.2",
+    "hardhat": "^2.22.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  }
+}
