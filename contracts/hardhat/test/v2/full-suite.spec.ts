@@ -137,6 +137,55 @@ describe("RiftLine v2 on-chain suite", () => {
     expect(await entitlement.hasEntitlement(player.address, citizenEntitlement)).to.equal(false);
   });
 
+  it("tracks character progression, attributes and metadata updates", async () => {
+    const [admin, player, gm] = await ethers.getSigners();
+
+    const character = await deployContract("PlayerCharacter");
+    await character.initialize(admin.address, "ipfs://characters/");
+    await character.connect(admin).grantRole(await character.GAME_SERVER_ROLE(), gm.address);
+    await character.connect(admin).grantRole(await character.METADATA_ROLE(), gm.address);
+
+    const archetype = ethers.id("scout");
+    const homeShard = ethers.id("rift-shard-1");
+    const initial = {
+      level: 1,
+      experience: 0,
+      reputation: 5,
+      lastActivityAt: 0,
+      archetype,
+      homeShard,
+    };
+
+    await character.connect(admin).mint(player.address, initial, "ipfs://characters/1", ethers.id("metadata:v1"));
+
+    expect(await character.characterIdOf(player.address)).to.equal(1n);
+
+    const progression = {
+      level: 6,
+      experience: 4200,
+      reputation: 77,
+      lastActivityAt: 123456,
+      archetype,
+      homeShard,
+    };
+    await character.connect(gm).syncProgression(1, progression);
+    const stored = await character.progressionOf(1);
+    expect(stored.level).to.equal(6);
+    expect(stored.experience).to.equal(4200);
+
+    const strengthKey = ethers.id("ATTR:STRENGTH");
+    await character.connect(gm).setAttributes(1, [{ key: strengthKey, value: 42 }]);
+    expect(await character.attributeOf(1, strengthKey)).to.equal(42);
+
+    const loadoutSlot = ethers.id("LOADOUT:PRIMARY");
+    const rifleItem = ethers.id("ITEM:PLASMA_RIFLE");
+    await character.connect(gm).setLoadout(1, [{ slot: loadoutSlot, item: rifleItem }]);
+    expect(await character.equipmentOf(1, loadoutSlot)).to.equal(rifleItem);
+
+    await character.connect(gm).setMetadataURI(1, "ipfs://characters/1?rev=2", ethers.id("metadata:v2"));
+    expect(await character.tokenURI(1)).to.equal("ipfs://characters/1?rev=2");
+  });
+
   it("grants business operating rights when licenses are leased", async () => {
     const [admin, vault, operator] = await ethers.getSigners();
     const registry = await deployContract("ServerRegistry");
@@ -195,8 +244,21 @@ describe("RiftLine v2 on-chain suite", () => {
     const token = await deployContract("RiftToken");
     await token.initialize(admin.address);
     await token.connect(admin).grantRole(await token.MINTER_ROLE(), admin.address);
-    await token.connect(admin).mint(voter.address, ethers.parseEther("5000"));
+    await token.connect(admin).mint(voter.address, ethers.parseEther("100"));
     await token.connect(voter).delegate(voter.address);
+
+    const character = await deployContract("PlayerCharacter");
+    await character.initialize(admin.address, "ipfs://characters/");
+    const baseProfile = {
+      level: 1,
+      experience: 0,
+      reputation: 0,
+      lastActivityAt: 0,
+      archetype: ethers.id("citizen"),
+      homeShard: ethers.id("downtown"),
+    };
+    await character.connect(admin).mint(voter.address, baseProfile, "", ethers.ZeroHash);
+    await character.connect(voter).delegate(voter.address);
 
     const timelock = await deployContract("CityTimelock");
     await timelock.initialize(1, [], [], admin.address);
@@ -211,6 +273,10 @@ describe("RiftLine v2 on-chain suite", () => {
       ethers.parseEther("1000"),
       4
     );
+
+    await governor
+      .connect(admin)
+      .setAdditionalVoteSource(await character.getAddress(), ethers.parseEther("1000"));
 
     await timelock.connect(admin).grantRole(await timelock.PROPOSER_ROLE(), await governor.getAddress());
     await timelock.connect(admin).grantRole(await timelock.EXECUTOR_ROLE(), ZERO_ADDRESS);
@@ -241,5 +307,129 @@ describe("RiftLine v2 on-chain suite", () => {
     await governor.execute([await registry.getAddress()], [0], [calldata], descriptionHash);
 
     expect(await registry.serverCaps(1, kind)).to.equal(25n);
+  });
+
+  it("processes cross-shard travel requests with relayer confirmations", async () => {
+    const [admin, player, relayer] = await ethers.getSigners();
+
+    const registry = await deployContract("ServerRegistry");
+    await registry.initialize(admin.address);
+    await registry.connect(admin).registerServer(1, "Oldtown");
+    await registry.connect(admin).registerServer(2, "Harbor");
+
+    const gateway = await deployContract("CrossServerGateway");
+    await gateway.initialize(admin.address, registry);
+    await gateway.connect(admin).grantRole(await gateway.RELAYER_ROLE(), relayer.address);
+    await gateway.connect(admin).setInitialShard(player.address, 1);
+
+    const payload = ethers.encodeBytes32String("sync-inventory");
+    await gateway.connect(player).requestTransfer(1, 2, payload);
+    const transferId = await gateway.activeTransferOf(player.address);
+    expect(transferId).to.equal(1n);
+
+    const arrivalPayload = ethers.encodeBytes32String("arrived");
+    await gateway.connect(relayer).commitTransfer(transferId, arrivalPayload);
+
+    const ackPayload = ethers.encodeBytes32String("ack");
+    await gateway.connect(player).finalizeTransfer(transferId, ackPayload);
+    expect(await gateway.currentShardOf(player.address)).to.equal(2);
+    expect(await gateway.activeTransferOf(player.address)).to.equal(0n);
+
+    await gateway.connect(player).requestTransfer(2, 1, "0x1234");
+    const cancelId = await gateway.activeTransferOf(player.address);
+    await gateway.connect(admin).cancelTransfer(cancelId);
+    expect(await gateway.activeTransferOf(player.address)).to.equal(0n);
+  });
+
+  it("validates paymaster sponsorships against session keys", async () => {
+    const [admin, account, sessionKey, entryPoint] = await ethers.getSigners();
+
+    const registry = await deployContract("SessionKeyRegistry");
+    await registry.initialize(admin.address);
+
+    const paymaster = await deployContract("SessionKeyPaymaster");
+    await paymaster.initialize(admin.address, entryPoint.address, registry, admin.address);
+    await registry.connect(admin).grantRole(await registry.EXECUTOR_ROLE(), await paymaster.getAddress());
+    expect(await paymaster.verifyingSigner()).to.equal(admin.address);
+
+    const nowTs = await time.latest();
+    const scope = ethers.id("MARKET_MINT");
+    await registry
+      .connect(account)
+      .registerSessionKey(sessionKey.address, scope, nowTs, nowTs + 3600, 1);
+
+    const verificationGas = 150000n;
+    const callGas = 200000n;
+    const preVerificationGas = 50000n;
+    const maxPriorityFee = ethers.toBigInt(ethers.parseUnits("1", "gwei"));
+    const maxFee = ethers.toBigInt(ethers.parseUnits("10", "gwei"));
+    const paymasterVerificationGas = 180000n;
+    const postOpGas = 60000n;
+    const header = ethers.solidityPacked(
+      ["address", "uint128", "uint128"],
+      [await paymaster.getAddress(), paymasterVerificationGas, postOpGas]
+    );
+
+    const accountGasLimits = ethers.zeroPadValue(
+      ethers.toBeHex((verificationGas << 128n) | callGas),
+      32
+    );
+    const gasFees = ethers.zeroPadValue(ethers.toBeHex((maxPriorityFee << 128n) | maxFee), 32);
+
+    const packedWithoutSig: any = [
+      account.address,
+      0n,
+      "0x",
+      "0x",
+      accountGasLimits,
+      preVerificationGas,
+      gasFees,
+      header,
+      "0x",
+    ];
+
+    const validUntil = nowTs + 1800;
+    const validAfter = nowTs;
+    const digest = await paymaster.getSponsorDigest(
+      packedWithoutSig,
+      sessionKey.address,
+      scope,
+      validUntil,
+      validAfter
+    );
+    const signature = await admin.signMessage(ethers.getBytes(digest));
+
+    const tail = ethers.AbiCoder.defaultAbiCoder().encode(
+      ["uint48", "uint48", "address", "bytes32", "bytes"],
+      [validUntil, validAfter, sessionKey.address, scope, signature]
+    );
+    const paymasterAndData = ethers.hexlify(ethers.concat([header, tail]));
+
+    const packedOp: any = [
+      account.address,
+      0n,
+      "0x",
+      "0x",
+      accountGasLimits,
+      preVerificationGas,
+      gasFees,
+      paymasterAndData,
+      "0x",
+    ];
+
+    expect(await registry.isSessionValid(account.address, sessionKey.address, scope)).to.equal(true);
+
+    const rawResponse = await paymaster
+      .connect(entryPoint)
+      .validatePaymasterUserOp.staticCall(packedOp, ethers.ZeroHash, 0);
+    const context = ((rawResponse as any).context ?? (rawResponse as any)[0] ?? "0x") as string;
+    expect(context).to.not.equal("0x");
+    const validationData = (rawResponse as any).validationData ?? (rawResponse as any)[1] ?? 0n;
+
+    const validationBigInt = BigInt(validationData);
+    expect(validationBigInt & 1n).to.equal(0n);
+    const contextBytes = ethers.getBytes((context as string) ?? "0x");
+    await paymaster.connect(entryPoint).postOp(0, contextBytes, 0, 0);
+    expect(await registry.isSessionValid(account.address, sessionKey.address, scope)).to.equal(false);
   });
 });
