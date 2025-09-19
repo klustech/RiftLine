@@ -1,8 +1,3 @@
-hardhat/contracts/v2/ServerRegistry.sol
-New
-+70
--0
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
@@ -27,6 +22,7 @@ contract ServerRegistry is Initializable, UUPSUpgradeable, AccessControlUpgradea
     event ServerRegistered(uint32 indexed serverId, string name);
     event ServerToggled(uint32 indexed serverId, bool active);
     event CapSet(uint32 indexed serverId, bytes32 indexed kind, uint256 cap);
+    event MintAccountingAdjusted(uint32 indexed serverId, bytes32 indexed kind, uint256 newTotal);
 
     function initialize(address admin) public initializer {
         __AccessControl_init();
@@ -69,6 +65,14 @@ contract ServerRegistry is Initializable, UUPSUpgradeable, AccessControlUpgradea
 
     function bumpMinted(uint32 serverId, bytes32 kind, uint256 amount) external onlyRole(MINTER_ROLE) {
         serverMinted[serverId][kind] += amount;
+        emit MintAccountingAdjusted(serverId, kind, serverMinted[serverId][kind]);
+    }
+
+    function reduceMinted(uint32 serverId, bytes32 kind, uint256 amount) external onlyRole(MINTER_ROLE) {
+        uint256 minted = serverMinted[serverId][kind];
+        require(minted >= amount, "insufficient minted");
+        serverMinted[serverId][kind] = minted - amount;
+        emit MintAccountingAdjusted(serverId, kind, serverMinted[serverId][kind]);
     }
 
     uint256[45] private __gap;
