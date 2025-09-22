@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TravelStatus {
+  pending
+  committed
+  finalized
+  failed
+}
+
+enum PlayerKycStatus {
+  none
+  guest
+  pending
+  verified
+}
+
+model Player {
+  id           String          @id @default(cuid())
+  wallet       String          @unique
+  username     String          @unique
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  kycStatus    PlayerKycStatus @default(none)
+  shardId      Int?
+  shard        Shard?          @relation(fields: [shardId], references: [id])
+  characterSbt String?
+  wantedUntil  DateTime?
+  softBalance  BigInt          @default(0)
+  pushToken    String?
+  tickets      TravelTicket[]
+  marketWatches MarketWatch[]
+  auctionBids  AuctionBid[]
+}
+
+model Shard {
+  id          Int       @id
+  name        String
+  ruleset     Json      @default("{}")
+  active      Boolean   @default(true)
+  population  Int       @default(0)
+  players     Player[]
+}
+
+model BusinessLease {
+  id           String   @id @default(cuid())
+  chainTokenId Int
+  serverId     Int
+  kindKey      Bytes
+  wallet       String
+  leaseEnd     DateTime
+  createdAt    DateTime @default(now())
+
+  @@index([wallet])
+  @@index([leaseEnd])
+}
+
+model AuctionState {
+  id             Int      @id
+  asset          String
+  tokenId        Int      @map("token_id")
+  payToken       String   @map("pay_token")
+  startTime      DateTime @map("start_time")
+  endTime        DateTime @map("end_time")
+  leaseSeconds   Int      @map("lease_seconds")
+  reserve        Decimal
+  minIncrement   Decimal  @map("min_increment")
+  highestBidder  String?  @map("highest_bidder")
+  highestBid     Decimal  @default(0) @map("highest_bid")
+  settled        Boolean  @default(false)
+  leaseEnd       DateTime? @map("lease_end")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  bids           AuctionBid[]
+
+  @@map("auction_state")
+}
+
+model AuctionBid {
+  id        String   @id @default(cuid())
+  auctionId Int      @map("auction_id")
+  wallet    String
+  amountWei Decimal  @map("amount")
+  txHash    String?  @map("tx_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  player    Player   @relation(fields: [wallet], references: [wallet])
+  auction   AuctionState @relation(fields: [auctionId], references: [id])
+
+  @@index([auctionId])
+  @@map("auction_bid")
+}
+
+model AuctionWatch {
+  id        String   @id @default(cuid())
+  auctionId Int
+  wallet    String
+  notifyAt  DateTime
+
+  @@unique([auctionId, wallet])
+}
+
+model Inventory1155 {
+  id        String   @id @default(cuid())
+  wallet    String
+  tokenId   String
+  amount    BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([wallet, tokenId])
+}
+
+model Apartment721 {
+  id        String   @id @default(cuid())
+  wallet    String
+  tokenId   Int
+  metaHash  String?
+  updatedAt DateTime @updatedAt
+
+  @@unique([tokenId])
+}
+
+model TravelTicket {
+  id        String        @id @default(cuid())
+  wallet    String
+  fromShard Int
+  toShard   Int
+  status    TravelStatus  @default(pending)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  player    Player        @relation(fields: [wallet], references: [wallet])
+}
+
+model MarketListing {
+  id          String   @id @default(cuid())
+  listingId   String   @unique
+  kind        String
+  tokenAddress String
+  tokenId     String
+  seller      String
+  payToken    String
+  price       Decimal
+  amount      Int       @default(1)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model MarketWatch {
+  id        String   @id @default(cuid())
+  listingId String
+  wallet    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  player    Player   @relation(fields: [wallet], references: [wallet])
+
+  @@unique([listingId, wallet])
+}

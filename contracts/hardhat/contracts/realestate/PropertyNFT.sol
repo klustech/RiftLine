@@ -75,13 +75,23 @@ contract PropertyNFT is ERC4907Core, AccessControl {
     }
 
     // Disable public transfers: properties are protocol-owned (vault) and not tradable.
-    function _update(address from, address to, uint256 tokenId, address auth)
+    function _update(address to, uint256 tokenId, address auth)
         internal override returns (address)
     {
+        address from = _ownerOf(tokenId);
         if (from != address(0) && to != address(0)) revert Errors.TransferDisabled();
-        return super._update(from, to, tokenId, auth);
+        return super._update(to, tokenId, auth);
     }
 
     function setBaseURI(string calldata b) external onlyRole(ADMIN_ROLE) { _base = b; }
     function _baseURI() internal view override returns (string memory) { return _base; }
+
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC4907Core, AccessControl)
+        returns (bool)
+    {
+        return ERC4907Core.supportsInterface(interfaceId) || AccessControl.supportsInterface(interfaceId);
+    }
 }
