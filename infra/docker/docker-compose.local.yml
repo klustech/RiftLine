@@ -4,7 +4,81 @@ services:
     image: postgres:15
     environment:
       POSTGRES_PASSWORD: dev
-    ports: ["5432:5432"]
+      POSTGRES_DB: riftline
+    ports:
+      - "5432:5432"
   redis:
     image: redis:7
-    ports: ["6379:6379"]
+    ports:
+      - "6379:6379"
+  nakama:
+    image: heroiclabs/nakama:3.22.0
+    command: ["--socket.server_key", "riftline-dev"]
+    depends_on:
+      - db
+    ports:
+      - "7350:7350"
+      - "7351:7351"
+    volumes:
+      - ../../backend/nakama/modules/ts/build:/nakama/data/modules
+      - ../../backend/nakama/config/nakama.yml:/nakama/data/nakama.yml
+  api:
+    build:
+      context: ../../backend/api-gateway
+    environment:
+      DATABASE_URL: postgres://postgres:dev@db:5432/riftline
+      RPC_URL: ${RPC_URL:-http://localhost:8545}
+      OPERATOR_KEY: ${OPERATOR_KEY:-0x0000000000000000000000000000000000000000000000000000000000000001}
+      JWT_SECRET: devsecret
+      SESSION_SECRET: devsession
+      CORS_ORIGIN: "*"
+      RIFTLINE_DEPLOYMENTS: /app/deployments/local.json
+    volumes:
+      - ../../chain/deployments:/app/deployments:ro
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+  indexer:
+    build:
+      context: ../../backend/services/indexer
+    environment:
+      DATABASE_URL: postgres://postgres:dev@db:5432/riftline
+      RPC_URL: ${RPC_URL:-http://localhost:8545}
+      RIFTLINE_DEPLOYMENTS: /app/deployments/local.json
+    volumes:
+      - ../../chain/deployments:/app/deployments:ro
+    depends_on:
+      - db
+  xshard:
+    build:
+      context: ../../backend/services/webhooks
+    environment:
+      DATABASE_URL: postgres://postgres:dev@db:5432/riftline
+      NAKAMA_RPC_URL: http://nakama:7350/v2/rpc
+    depends_on:
+      - db
+      - nakama
+  notifications:
+    build:
+      context: ../../backend/services/notifications
+    environment:
+      DATABASE_URL: postgres://postgres:dev@db:5432/riftline
+    depends_on:
+      - db
+  bundler:
+    build:
+      context: ../../backend/web3/bundler
+    environment:
+      PORT: 4337
+      BUNDLER_API_KEY: devkey
+    ports:
+      - "4337:4337"
+  paymaster:
+    build:
+      context: ../../backend/web3/paymaster
+    environment:
+      PORT: 3001
+      PAYMASTER_API_KEY: devkey
+    ports:
+      - "3001:3001"

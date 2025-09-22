@@ -1,0 +1,77 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install API deps
+        run: npm install
+        working-directory: backend/api-gateway
+      - name: Build API
+        run: npm run build
+        working-directory: backend/api-gateway
+
+      - name: Install indexer deps
+        run: npm install
+        working-directory: backend/services/indexer
+      - name: Build indexer
+        run: npm run build
+        working-directory: backend/services/indexer
+
+      - name: Install cross-shard worker deps
+        run: npm install
+        working-directory: backend/services/webhooks
+      - name: Build cross-shard worker
+        run: npm run build
+        working-directory: backend/services/webhooks
+
+      - name: Install notifications deps
+        run: npm install
+        working-directory: backend/services/notifications
+      - name: Build notifications
+        run: npm run build
+        working-directory: backend/services/notifications
+
+      - name: Install bundler deps
+        run: npm install
+        working-directory: backend/web3/bundler
+      - name: Build bundler
+        run: npm run build
+        working-directory: backend/web3/bundler
+
+      - name: Install paymaster deps
+        run: npm install
+        working-directory: backend/web3/paymaster
+      - name: Build paymaster
+        run: npm run build
+        working-directory: backend/web3/paymaster
+
+      - name: Install nakama modules deps
+        run: npm install
+        working-directory: backend/nakama/modules/ts
+      - name: Build nakama modules
+        run: npm run build
+        working-directory: backend/nakama/modules/ts
+
+      - name: Install Hardhat deps
+        run: npm install
+        working-directory: chain
+      - name: Compile contracts
+        run: npx hardhat compile
+        working-directory: chain
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Run forge tests
+        run: forge test -vv
+        working-directory: contracts/foundry

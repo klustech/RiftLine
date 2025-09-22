@@ -40,6 +40,16 @@ export const roles = {
     ADMIN_ROLE: ethers.id("ADMIN_ROLE"),
     MINTER_ROLE: ethers.id("MINTER_ROLE"),
   },
+  PROPERTY: {
+    ADMIN_ROLE: ethers.id("ADMIN_ROLE"),
+    MINTER_ROLE: ethers.id("MINTER_ROLE"),
+    MANAGER_ROLE: ethers.id("MANAGER_ROLE"),
+  },
+  VEHICLE: {
+    ADMIN_ROLE: ethers.id("ADMIN_ROLE"),
+    CUSTODIAN_ROLE: ethers.id("CUSTODIAN_ROLE"),
+    OPERATOR_ROLE: ethers.id("OPERATOR_ROLE"),
+  },
   RFT: {
     ADMIN_ROLE: ethers.id("ADMIN_ROLE"),
     MINTER_ROLE: ethers.id("MINTER_ROLE"),
@@ -47,5 +57,12 @@ export const roles = {
   TREASURY: {
     ADMIN_ROLE: ethers.id("ADMIN_ROLE"),
     EMITTER_ROLE: ethers.id("EMITTER_ROLE"),
+  },
+  MARKET: {
+    ADMIN_ROLE: ethers.id("ADMIN_ROLE"),
+    LISTING_MANAGER_ROLE: ethers.id("LISTING_MANAGER_ROLE"),
+  },
+  AUCTION: {
+    ADMIN_ROLE: ethers.id("ADMIN_ROLE"),
   }
 };

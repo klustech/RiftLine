@@ -1,0 +1,9 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": false,
+    "baseUrl": "./"
+  },
+  "include": ["App.tsx", "app/**/*.tsx", "screens/**/*.tsx", "components/**/*.tsx", "lib/**/*.ts"]
+}
