@@ -2,7 +2,7 @@ import { Router } from "express";
 import jwt from "jsonwebtoken";
 import { prisma } from "../services/db";
 import { loadConfig } from "../config/env";
-import { createGuestSchema, updateProfileSchema } from "../validators/players";
+import { createGuestSchema, heartbeatSchema, updateProfileSchema } from "../validators/players";
 import { requireAuth } from "../middleware/auth";
 import { serializeBigInt } from "../utils/serialization";
 
@@ -45,6 +45,21 @@ router.patch("/me", requireAuth, async (req, res, next) => {
     const data = updateProfileSchema.parse(req.body ?? {});
     const player = await prisma.player.update({ where: { id: req.auth!.id }, data });
     res.json(serializeBigInt(player));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/heartbeat", requireAuth, async (req, res, next) => {
+  try {
+    const { shardId } = heartbeatSchema.parse(req.body ?? {});
+    await prisma.player.update({
+      where: { id: req.auth!.id },
+      data: {
+        shardId: typeof shardId === "number" ? shardId : undefined
+      }
+    });
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

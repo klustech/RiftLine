@@ -3,9 +3,9 @@ import { prisma } from "../services/db";
 import { requireAuth } from "../middleware/auth";
 import { auctionBidSchema } from "../validators/market";
 import { serializeBigInt } from "../utils/serialization";
-import { ensureKyc } from "../services/kyc";
 import { notifyAuctionEvent } from "../services/notify";
 import { placeAuctionBid } from "../services/chain";
+import { requireCompliantPlayer } from "../middleware/compliance";
 
 const router = Router();
 
@@ -23,16 +23,12 @@ router.get("/", async (_req, res, next) => {
   }
 });
 
-router.post("/:id/bid", requireAuth, async (req, res, next) => {
+router.post("/:id/bid", requireAuth, requireCompliantPlayer, async (req, res, next) => {
   try {
     const { amount } = auctionBidSchema.parse(req.body ?? {});
     const auctionId = Number(req.params.id);
     if (!Number.isFinite(auctionId)) {
       return res.status(400).json({ error: "invalid_auction" });
-    }
-    const kyc = await ensureKyc(req.auth!.wallet);
-    if (!kyc.ok) {
-      return res.status(403).json({ error: "kyc_required", reason: kyc.reason });
     }
 
     const bidAmount = BigInt(amount);

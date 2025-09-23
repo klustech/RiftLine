@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: riftline-config
+  namespace: riftline
+  labels:
+    app.kubernetes.io/name: riftline
+    app.kubernetes.io/component: config
+data:
+  API_BASE_URL: "https://api.riftline.dev"
+  DATABASE_HOST: "postgres"
+  REDIS_URL: "redis://redis:6379"
+  NAKAMA_HTTP_URL: "http://nakama:7350"
+  BUNDLER_RPC_URL: "http://bundler:4337"
+  PAYMASTER_URL: "http://paymaster:3001"
+  LOG_LEVEL: "info"
