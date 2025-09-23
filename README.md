@@ -144,8 +144,7 @@ uilds, tests, security scanning, and deployment automation.
 tstrap or teardown the local services stack.
 - **Database Utilities** – `scripts/db/` is the staging area for migration and seeding automation. Expand `migrate.sh` to encapsu
 late your preferred migration toolchain.
-- **Deployment Hooks** – `scripts/deploy/local.sh` will evolve into a deployment helper once service promotion workflows are esta
-blished.
+- **Deployment Hooks** – Deployment helpers now live alongside CI workflows; leverage the `.github/workflows` stack instead of the legacy `scripts/deploy/local.sh` stub.
 - **Workstation Setup** – `scripts/ops/wsl-setup.sh` is reserved for Windows Subsystem for Linux onboarding tasks and can be expa
 nded with environment hardening steps.
 

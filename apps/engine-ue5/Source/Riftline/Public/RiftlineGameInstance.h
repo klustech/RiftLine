@@ -36,6 +36,12 @@ public:
     UFUNCTION(BlueprintCallable, Category = "Riftline|Compliance")
     void UpdateCompliance(const FRiftlineComplianceState& ComplianceState);
 
+    UFUNCTION(BlueprintCallable, Category = "Riftline|Phone")
+    void UpdateWalletView(const FRiftlineWalletView& WalletView);
+
+    UFUNCTION(BlueprintCallable, Category = "Riftline|Phone")
+    void UpdateActiveMissions(const TArray<FText>& Missions);
+
     UFUNCTION(BlueprintCallable, Category = "Riftline|Network")
     void PushTelemetryEvent(const FString& Event, const TMap<FString, FString>& Properties);
 
@@ -60,6 +66,8 @@ private:
 
     FRiftlineSessionProfile Session;
     TWeakObjectPtr<URiftlinePhoneWidget> PhoneWidget;
+    FRiftlineWalletView WalletView;
+    TArray<FText> ActiveMissions;
 
     FTimerHandle HeartbeatTimerHandle;
 

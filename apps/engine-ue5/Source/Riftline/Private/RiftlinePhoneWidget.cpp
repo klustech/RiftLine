@@ -29,3 +29,15 @@ void URiftlinePhoneWidget::HandleShardStatus(const FRiftlineShardStatus& Status)
     KnownShards.AddUnique(Status);
     OnShardStatusChanged(Status);
 }
+
+void URiftlinePhoneWidget::HandleWalletUpdated(const FRiftlineWalletView& Wallet)
+{
+    CachedWallet = Wallet;
+    OnWalletUpdated(Wallet);
+}
+
+void URiftlinePhoneWidget::HandleMissionsUpdated(const TArray<FText>& Missions)
+{
+    CachedMissions = Missions;
+    OnMissionsUpdated(CachedMissions);
+}

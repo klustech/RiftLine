@@ -1,12 +1,5 @@
 import { z } from "zod";
 
-export const craftRequestSchema = z.object({
-  itemId: z.number().int().min(1),
-  amount: z.number().int().min(1).max(50).default(1),
-  shardId: z.number().int().min(0).default(0),
-  recipeId: z.string().optional()
-});
-
 export const deviceAttestationSchema = z.object({
   deviceId: z.string().min(8),
   attestationId: z.string().min(8),

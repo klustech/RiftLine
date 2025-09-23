@@ -118,6 +118,26 @@ void URiftlineGameInstance::UpdateCompliance(const FRiftlineComplianceState& Com
     }
 }
 
+void URiftlineGameInstance::UpdateWalletView(const FRiftlineWalletView& WalletViewIn)
+{
+    WalletView = WalletViewIn;
+
+    if (PhoneWidget.IsValid())
+    {
+        PhoneWidget->HandleWalletUpdated(WalletView);
+    }
+}
+
+void URiftlineGameInstance::UpdateActiveMissions(const TArray<FText>& Missions)
+{
+    ActiveMissions = Missions;
+
+    if (PhoneWidget.IsValid())
+    {
+        PhoneWidget->HandleMissionsUpdated(ActiveMissions);
+    }
+}
+
 void URiftlineGameInstance::PushTelemetryEvent(const FString& Event, const TMap<FString, FString>& Properties)
 {
     if (Session.PlayerId.IsEmpty())
@@ -165,6 +185,8 @@ void URiftlineGameInstance::RegisterPhoneWidget(URiftlinePhoneWidget* Widget)
         PhoneWidget->HandleWantedUpdated(Session.Wanted);
         PhoneWidget->HandleComplianceUpdated(Session.Compliance);
         PhoneWidget->HandleShardStatus(Session.CurrentShard);
+        PhoneWidget->HandleWalletUpdated(WalletView);
+        PhoneWidget->HandleMissionsUpdated(ActiveMissions);
     }
 }
 

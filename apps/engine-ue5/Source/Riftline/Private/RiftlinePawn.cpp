@@ -5,6 +5,7 @@
 #include "GameFramework/FloatingPawnMovement.h"
 #include "GameFramework/PlayerController.h"
 #include "Kismet/GameplayStatics.h"
+#include "RiftlineInteractionComponent.h"
 
 ARiftlinePawn::ARiftlinePawn()
 {
@@ -28,6 +29,8 @@ ARiftlinePawn::ARiftlinePawn()
     Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
     Camera->SetupAttachment(SpringArm, USpringArmComponent::SocketName);
     Camera->bUsePawnControlRotation = false;
+
+    Interaction = CreateDefaultSubobject<URiftlineInteractionComponent>(TEXT("Interaction"));
 }
 
 void ARiftlinePawn::BeginPlay()
@@ -82,6 +85,11 @@ void ARiftlinePawn::LookPitch(float Value)
 
 void ARiftlinePawn::OnInteract()
 {
+    if (Interaction && Interaction->TryInteract())
+    {
+        return;
+    }
+
     if (APlayerController* PC = Cast<APlayerController>(Controller))
     {
         PC->InputKey(FKey(TEXT("Virtual_Click")), IE_Pressed, 1.0f, false);
