@@ -2,5 +2,5 @@ variable "name" {}
 variable "vpc_id" {}
 
 output "note" {
-  value = "Provision EKS cluster and node groups here"
+  value = "Create PostgreSQL RDS instance here"
 }

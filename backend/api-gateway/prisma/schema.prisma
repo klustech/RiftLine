@@ -291,3 +291,31 @@ model SessionKey {
   @@index([scope])
   @@index([expiresAt])
 }
+
+model Faction {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  members   FactionMember[]
+}
+
+model FactionMember {
+  id        String   @id @default(cuid())
+  factionId String
+  wallet    String
+  rep       Int      @default(0)
+  createdAt DateTime @default(now())
+  faction   Faction  @relation(fields: [factionId], references: [id])
+
+  @@unique([factionId, wallet])
+}
+
+model TravelAudit {
+  id        String   @id @default(cuid())
+  wallet    String
+  toServer  Int
+  status    String
+  meta      Json
+  createdAt DateTime @default(now())
+}
+

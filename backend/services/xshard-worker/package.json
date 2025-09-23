@@ -1,0 +1,16 @@
+{
+  "name": "xshard-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "pg": "^8.11.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.17.0",
+    "typescript": "^5.6.3"
+  }
+}

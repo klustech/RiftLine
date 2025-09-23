@@ -1,6 +1,7 @@
 import type { nkruntime } from "@heroiclabs/nakama-runtime";
 import { registerSessionRpc } from "./rpc/session";
 import { registerWantedRpcs } from "./rpc/wanted";
+import { registerFactionRpcs } from "./rpc/factions";
 import { registerCraftingRpc } from "./economy/crafting";
 import { registerShardMatch } from "./match/shard";
 import { registerTransferRpc } from "./rpc/transfer";
@@ -11,6 +12,11 @@ const Init: nkruntime.InitModule = (ctx) => {
 
   const wantedRpcs = registerWantedRpcs(ctx);
   for (const rpc of wantedRpcs) {
+    ctx.registerRpc(rpc.id, rpc.handler);
+  }
+
+  const factionRpcs = registerFactionRpcs(ctx);
+  for (const rpc of factionRpcs) {
     ctx.registerRpc(rpc.id, rpc.handler);
   }
 
