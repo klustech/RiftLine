@@ -3,6 +3,7 @@ import { registerSessionRpc } from "./rpc/session";
 import { registerWantedRpcs } from "./rpc/wanted";
 import { registerCraftingRpc } from "./economy/crafting";
 import { registerShardMatch } from "./match/shard";
+import { registerTransferRpc } from "./rpc/transfer";
 
 const Init: nkruntime.InitModule = (ctx) => {
   const session = registerSessionRpc(ctx);
@@ -18,6 +19,9 @@ const Init: nkruntime.InitModule = (ctx) => {
 
   const shardMatch = registerShardMatch(ctx);
   ctx.registerMatch(shardMatch.id, shardMatch.handler);
+
+  const transferRpc = registerTransferRpc(ctx);
+  ctx.registerRpc(transferRpc.id, transferRpc.handler);
 };
 
 export { Init };
