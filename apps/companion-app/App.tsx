@@ -6,6 +6,8 @@ import MarketScreen from "./screens/Market";
 import AuctionsScreen from "./screens/Auctions";
 import ShardSelectorScreen from "./screens/ShardSelector";
 import ChatScreen from "./screens/Chat";
+import WalletScreen from "./screens/Wallet";
+import TravelStatusScreen from "./screens/TravelStatus";
 
 export type RootStackParamList = {
   SignIn: undefined;
@@ -14,6 +16,8 @@ export type RootStackParamList = {
   Auctions: undefined;
   ShardSelector: undefined;
   Chat: undefined;
+  Wallet: undefined;
+  TravelStatus: { state?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -28,6 +32,8 @@ export default function App() {
         <Stack.Screen name="Auctions" component={AuctionsScreen} />
         <Stack.Screen name="ShardSelector" component={ShardSelectorScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
+        <Stack.Screen name="Wallet" component={WalletScreen} />
+        <Stack.Screen name="TravelStatus" component={TravelStatusScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

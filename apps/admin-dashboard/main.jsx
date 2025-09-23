@@ -1,28 +1,26 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 
-function useFetch(url, responseType = "text", intervalMs = 5000) {
-  const [value, setValue] = React.useState(null);
+function useJson(url, intervalMs = 10000) {
+  const [data, setData] = React.useState(null);
 
   React.useEffect(() => {
     let active = true;
     let timeoutId;
 
-    const parser = responseType === "json" ? (res) => res.json() : (res) => res.text();
-
     const fetchOnce = async () => {
       try {
         const res = await fetch(url);
-        const parsed = await parser(res);
+        const parsed = await res.json();
         if (!res.ok) {
-          throw new Error(typeof parsed === "string" ? parsed : JSON.stringify(parsed));
+          throw new Error(typeof parsed === 'string' ? parsed : JSON.stringify(parsed));
         }
         if (active) {
-          setValue(parsed);
+          setData(parsed);
         }
       } catch (err) {
         if (active) {
-          setValue(`error: ${err instanceof Error ? err.message : String(err)}`);
+          setData(null);
         }
       } finally {
         if (active) {
@@ -39,77 +37,73 @@ function useFetch(url, responseType = "text", intervalMs = 5000) {
         window.clearTimeout(timeoutId);
       }
     };
-  }, [url, responseType, intervalMs]);
+  }, [url, intervalMs]);
 
-  return value;
+  return data;
 }
 
-function MetricPanel({ title, data }) {
+function Tile({ title, children }) {
   return (
     <section style={{ marginBottom: 24 }}>
-      <h3>{title}</h3>
-      <pre style={{ background: "#0c1424", color: "#dfe7ff", padding: 12, borderRadius: 8 }}>
-        {data ?? "loading..."}
-      </pre>
+      <h3 style={{ color: '#e3e9ff', marginBottom: 8 }}>{title}</h3>
+      <div style={{ background: '#0c1424', color: '#dfe7ff', padding: 16, borderRadius: 12 }}>{children}</div>
     </section>
   );
 }
 
-function TelemetryStats({ stats }) {
-  if (!stats || typeof stats !== "object" || Array.isArray(stats)) {
-    return (
-      <section style={{ marginBottom: 24 }}>
-        <h3>Telemetry</h3>
-        <pre style={{ background: "#0c1424", color: "#dfe7ff", padding: 12, borderRadius: 8 }}>
-          {stats ?? "loading..."}
-        </pre>
-      </section>
-    );
-  }
-
+function MetricsPanel({ title, data }) {
   return (
-    <section style={{ marginBottom: 24 }}>
-      <h3>Telemetry</h3>
-      <div
-        style={{
-          display: "flex",
-          gap: 24,
-          background: "#0c1424",
-          color: "#dfe7ff",
-          padding: 16,
-          borderRadius: 8
-        }}
-      >
-        <div>
-          <strong>Total Events</strong>
-          <div style={{ fontSize: 24 }}>{stats.total ?? 0}</div>
-        </div>
-        <div>
-          <strong>Last Hour</strong>
-          <div style={{ fontSize: 24 }}>{stats.lastHour ?? 0}</div>
-        </div>
-      </div>
-    </section>
+    <Tile title={title}>
+      <pre style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{data ?? 'loading...'}</pre>
+    </Tile>
   );
 }
 
 function App() {
-  const bundlerMetrics = useFetch("http://localhost:4337/metrics");
-  const paymasterMetrics = useFetch("http://localhost:3001/metrics");
-  const telemetryStats = useFetch("http://localhost:8080/telemetry/stats", "json", 10000);
+  const kinds = useJson('http://localhost:8080/telemetry/stats/kinds');
+  const shards = useJson('http://localhost:8080/telemetry/stats/shards');
+  const bundlerPromise = React.useMemo(
+    () =>
+      fetch('http://localhost:4337/metrics')
+        .then((res) => res.text())
+        .catch(() => 'unavailable'),
+    []
+  );
+  const paymasterPromise = React.useMemo(
+    () =>
+      fetch('http://localhost:3001/metrics')
+        .then((res) => res.text())
+        .catch(() => 'unavailable'),
+    []
+  );
+  const [bundlerMetrics, setBundlerMetrics] = React.useState('loading...');
+  const [paymasterMetrics, setPaymasterMetrics] = React.useState('loading...');
+
+  React.useEffect(() => {
+    bundlerPromise.then(setBundlerMetrics);
+  }, [bundlerPromise]);
+
+  React.useEffect(() => {
+    paymasterPromise.then(setPaymasterMetrics);
+  }, [paymasterPromise]);
 
   return (
-    <div style={{ fontFamily: "'Segoe UI', sans-serif", padding: 32, background: "#050a16", minHeight: "100vh" }}>
+    <div style={{ fontFamily: "'Segoe UI', sans-serif", padding: 32, background: '#050a16', minHeight: '100vh', color: '#f4f6ff' }}>
       <header style={{ marginBottom: 32 }}>
-        <h1 style={{ color: "#f4f6ff", marginBottom: 8 }}>RiftLine Operations</h1>
-        <p style={{ color: "#9ca5c7" }}>Live metrics across bundler, paymaster, and telemetry ingestion.</p>
+        <h1 style={{ marginBottom: 8 }}>RiftLine Live Ops</h1>
+        <p style={{ color: '#8f99c2' }}>Telemetry, shard activity, and wallet infra metrics.</p>
       </header>
-      <TelemetryStats stats={telemetryStats} />
-      <MetricPanel title="Bundler Metrics" data={bundlerMetrics} />
-      <MetricPanel title="Paymaster Metrics" data={paymasterMetrics} />
+      <Tile title="Telemetry by kind">
+        <pre style={{ margin: 0 }}>{kinds ? JSON.stringify(kinds, null, 2) : 'loading...'}</pre>
+      </Tile>
+      <Tile title="Telemetry by shard">
+        <pre style={{ margin: 0 }}>{shards ? JSON.stringify(shards, null, 2) : 'loading...'}</pre>
+      </Tile>
+      <MetricsPanel title="Bundler metrics" data={bundlerMetrics} />
+      <MetricsPanel title="Paymaster metrics" data={paymasterMetrics} />
     </div>
   );
 }
 
-const root = createRoot(document.getElementById("root"));
+const root = createRoot(document.getElementById('root'));
 root.render(<App />);

@@ -39,6 +39,11 @@ export const registerTransferRpc = (ctx: nkruntime.InitContext) => {
       }
     ]);
 
+    nk.storageDelete([{
+      collection: "enforcement",
+      key: `wanted:${rpcCtx.userId}`,
+      userId: rpcCtx.userId
+    }]);
     logger.info("transfer committed for %s -> %s", sourceWallet, data.to);
     return JSON.stringify({ ok: true });
   };
