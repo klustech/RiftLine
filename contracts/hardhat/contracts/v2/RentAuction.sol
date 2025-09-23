@@ -32,6 +32,8 @@ contract RentAuction is Initializable, UUPSUpgradeable, AccessControlUpgradeable
     event LotCreated(uint256 indexed lotId, uint256 tokenId, uint64 start, uint64 end, uint64 leaseSeconds, uint96 reserve);
     event Bid(uint256 indexed lotId, address bidder, uint96 amount, uint64 newEnd);
     event Settled(uint256 indexed lotId, address winner, uint96 amount, uint64 leaseUntil);
+    event LotCancelled(uint256 indexed lotId, address indexed actor);
+    event LotRelisted(uint256 indexed lotId, uint256 tokenId, uint64 start, uint64 end, uint64 leaseSeconds, uint96 reserve);
 
     function initialize(address admin, IERC20 _rft, BusinessLicenseNFT _lic, address _treasury) public initializer {
         __AccessControl_init();
@@ -71,6 +73,7 @@ contract RentAuction is Initializable, UUPSUpgradeable, AccessControlUpgradeable
 
     function bid(uint256 lotId, uint96 amount) external {
         Lot memory L = lots[lotId];
+        require(L.leaseSeconds > 0, "inactive");
         require(block.timestamp >= L.startTime && block.timestamp < L.endTime, "not live");
         uint96 minBid = L.highBid == 0 ? L.reserve : L.highBid + L.minIncrement;
         require(amount >= minBid, "low bid");
@@ -94,6 +97,7 @@ contract RentAuction is Initializable, UUPSUpgradeable, AccessControlUpgradeable
 
     function settle(uint256 lotId) external {
         Lot memory L = lots[lotId];
+        require(L.leaseSeconds > 0, "inactive");
         require(block.timestamp >= L.endTime, "not ended");
         require(L.highBidder != address(0), "no bids");
 
@@ -103,6 +107,51 @@ contract RentAuction is Initializable, UUPSUpgradeable, AccessControlUpgradeable
 
         emit Settled(lotId, L.highBidder, L.highBid, leaseUntil);
         delete lots[lotId];
+    }
+
+    function cancel(uint256 lotId) external onlyRole(ADMIN_ROLE) {
+        Lot storage L = lots[lotId];
+        require(L.tokenId != 0, "unknown lot");
+        if (L.highBidder != address(0) && L.highBid > 0) {
+            rft.transfer(L.highBidder, L.highBid);
+        }
+        L.highBidder = address(0);
+        L.highBid = 0;
+        L.startTime = 0;
+        L.endTime = 0;
+        L.leaseSeconds = 0;
+        L.reserve = 0;
+        L.minIncrement = 0;
+        emit LotCancelled(lotId, _msgSender());
+    }
+
+    function relist(
+        uint256 lotId,
+        uint256 tokenId,
+        uint64 start,
+        uint64 end,
+        uint64 leaseSeconds,
+        uint96 reserve,
+        uint96 minIncrement
+    ) external onlyRole(ADMIN_ROLE) {
+        require(end > start && leaseSeconds > 0, "bad params");
+        Lot storage L = lots[lotId];
+        require(L.tokenId != 0, "unknown lot");
+        require(L.highBidder == address(0) && L.highBid == 0, "pending bid");
+        require(L.leaseSeconds == 0 || block.timestamp >= L.endTime, "lot active");
+
+        if (tokenId == 0) {
+            tokenId = L.tokenId;
+        }
+        require(tokenId != 0, "token required");
+        L.tokenId = tokenId;
+        L.startTime = start;
+        L.endTime = end;
+        L.leaseSeconds = leaseSeconds;
+        L.reserve = reserve;
+        L.minIncrement = minIncrement;
+
+        emit LotRelisted(lotId, tokenId, start, end, leaseSeconds, reserve);
     }
 
     uint256[43] private __gap;

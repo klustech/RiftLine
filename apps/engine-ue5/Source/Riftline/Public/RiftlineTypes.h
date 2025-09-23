@@ -73,6 +73,24 @@ struct FRiftlineComplianceState
 };
 
 USTRUCT(BlueprintType)
+struct FRiftlineWalletView
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    FString Address;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 SoftCurrency = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 WantedMinutes = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 ShardId = INDEX_NONE;
+};
+
+USTRUCT(BlueprintType)
 struct FRiftlineSessionProfile
 {
     GENERATED_BODY()

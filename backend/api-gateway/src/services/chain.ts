@@ -10,6 +10,11 @@ const rentAuctionAbi = [
   "function bid(uint256 lotId, uint96 amount)"
 ];
 
+const serverRegistryAbi = [
+  "function serverCaps(uint32 shardId, bytes32 kind) view returns (uint256)",
+  "function serverMinted(uint32 shardId, bytes32 kind) view returns (uint256)"
+];
+
 const businessLicenseAbi = [
   "function userOf(uint256 tokenId) view returns (address)",
   "function userExpires(uint256 tokenId) view returns (uint256)",
@@ -25,7 +30,13 @@ const propertyAbi = [
 ];
 
 const item1155Abi = [
-  "function balanceOf(address owner, uint256 id) view returns (uint256)"
+  "function balanceOf(address owner, uint256 id) view returns (uint256)",
+  "function mintServer(address to, uint32 serverId, uint128 itemType, uint256 amount, string uriIfNew, bytes data)"
+];
+
+const characterAbi = [
+  "function syncProgression(uint256 tokenId, uint32 xp, int32 reputation)",
+  "function setLoadout(uint256 tokenId, string[] calldata equipment)"
 ];
 
 const vehicleAbi = [
@@ -57,12 +68,14 @@ function requireAddress(name: keyof typeof config.deployments) {
 
 export const contracts = {
   rentAuction: new ethers.Contract(requireAddress("RentAuction"), rentAuctionAbi, operator),
+  registry: config.deployments.ServerRegistry ? new ethers.Contract(requireAddress("ServerRegistry"), serverRegistryAbi, operator) : undefined,
   businessLicense: new ethers.Contract(requireAddress("BusinessLicenseNFT"), businessLicenseAbi, provider),
   property: config.deployments.PropertyNFT ? new ethers.Contract(requireAddress("PropertyNFT"), propertyAbi, provider) : undefined,
-  item1155: new ethers.Contract(requireAddress("Item1155"), item1155Abi, provider),
+  item1155: new ethers.Contract(requireAddress("Item1155"), item1155Abi, operator),
   vehicle: config.deployments.VehicleNFT ? new ethers.Contract(requireAddress("VehicleNFT"), vehicleAbi, provider) : undefined,
   apartment: config.deployments.ApartmentNFT ? new ethers.Contract(requireAddress("ApartmentNFT"), apartmentAbi, provider) : undefined,
-  marketplace: config.deployments.AssetMarketplace ? new ethers.Contract(requireAddress("AssetMarketplace"), marketplaceAbi, operator) : undefined
+  marketplace: config.deployments.AssetMarketplace ? new ethers.Contract(requireAddress("AssetMarketplace"), marketplaceAbi, operator) : undefined,
+  character: config.deployments.CharacterSBT ? new ethers.Contract(requireAddress("CharacterSBT"), characterAbi, operator) : undefined
 };
 
 export async function verifyBusinessLease(tokenId: number) {

@@ -17,6 +17,8 @@ import travelRoutes from "./routes/travel";
 import complianceRoutes from "./routes/compliance";
 import telemetryRoutes from "./routes/telemetry";
 import sessionKeyRoutes from "./routes/sessionKeys";
+import craftingRoutes from "./routes/crafting";
+import progressionRoutes from "./routes/progression";
 
 const config = loadConfig();
 const app = express();
@@ -44,6 +46,8 @@ app.use("/travel", travelRoutes);
 app.use("/compliance", complianceRoutes);
 app.use("/telemetry", telemetryRoutes);
 app.use("/session-keys", sessionKeyRoutes);
+app.use("/craft", craftingRoutes);
+app.use("/progression", progressionRoutes);
 
 app.use(errorHandler);
 

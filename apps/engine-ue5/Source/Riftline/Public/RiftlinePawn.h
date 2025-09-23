@@ -8,6 +8,7 @@ class UCapsuleComponent;
 class UCameraComponent;
 class USpringArmComponent;
 class UFloatingPawnMovement;
+class URiftlineInteractionComponent;
 
 UCLASS()
 class RIFTLINE_API ARiftlinePawn : public APawn
@@ -32,6 +33,9 @@ private:
 
     UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Riftline|Components", meta = (AllowPrivateAccess = "true"))
     UFloatingPawnMovement* Movement;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Riftline|Components", meta = (AllowPrivateAccess = "true"))
+    URiftlineInteractionComponent* Interaction;
 
     FVector MovementInput;
     FVector2D LookInput;

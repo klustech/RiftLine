@@ -21,7 +21,9 @@ export function usePlayer() {
   const [state, setState] = useState(player);
   useEffect(() => {
     playerListeners.add(setState);
-    return () => playerListeners.delete(setState);
+    return () => {
+      playerListeners.delete(setState);
+    };
   }, []);
   return state;
 }

@@ -4,9 +4,10 @@ import rateLimit from "express-rate-limit";
 import pino from "pino";
 import pinoHttp from "pino-http";
 import Redis from "ioredis";
-import { randomUUID, randomBytes } from "crypto";
-import { Registry, collectDefaultMetrics, Counter, Gauge } from "prom-client";
+import { randomUUID } from "crypto";
+import { Registry, collectDefaultMetrics, Gauge } from "prom-client";
 import { z } from "zod";
+import { DEDUPE_PREFIX, HASH_PREFIX, QUEUE_PENDING } from "./queues";
 
 const logger = pino({ level: process.env.LOG_LEVEL ?? "info" });
 const app = express();
@@ -17,15 +18,7 @@ const redis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379");
 
 const registry = new Registry();
 collectDefaultMetrics({ register: registry });
-const processedCounter = new Counter({ name: "bundler_processed_total", help: "Total bundled operations", registers: [registry] });
-const failedCounter = new Counter({ name: "bundler_failed_total", help: "Total failed operations", registers: [registry] });
 const queueGauge = new Gauge({ name: "bundler_queue_depth", help: "Pending queue depth", registers: [registry] });
-
-const QUEUE_PENDING = "bundler:queue:pending";
-const QUEUE_PROCESSING = "bundler:queue:processing";
-const HASH_PREFIX = "bundler:operation:";
-const DEDUPE_PREFIX = "bundler:dedupe:";
-const MAX_ATTEMPTS = Number(process.env.BUNDLER_MAX_ATTEMPTS ?? 3);
 
 const userOpSchema = z.object({
   sender: z.string(),
@@ -101,76 +94,11 @@ app.post("/rpc", async (req, res, next) => {
       payload: JSON.stringify(payload)
     });
     await redis.rpush(QUEUE_PENDING, opId);
-    queueGauge.inc();
 
     res.json({ operationId: opId, status: "queued" });
   } catch (err) {
     next(err);
   }
-});
-
-async function processOperation(opId: string) {
-  const opKey = HASH_PREFIX + opId;
-  const data = await redis.hgetall(opKey);
-  if (!Object.keys(data).length) {
-    await redis.lrem(QUEUE_PROCESSING, 0, opId);
-    return;
-  }
-  const attempts = Number(data.attempts ?? "0") + 1;
-  await redis.hset(opKey, { attempts: String(attempts), status: "processing", lastError: "" });
-
-  try {
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    if (Math.random() < 0.05) {
-      throw new Error("simulation_failure");
-    }
-    const txHash = `0x${randomBytes(32).toString("hex")}`;
-    await redis.hset(opKey, {
-      status: "submitted",
-      completedAt: new Date().toISOString(),
-      hash: txHash
-    });
-    processedCounter.inc();
-    await redis.lrem(QUEUE_PROCESSING, 0, opId);
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : "unknown_error";
-    if (attempts >= MAX_ATTEMPTS) {
-      await redis.hset(opKey, {
-        status: "failed",
-        completedAt: new Date().toISOString(),
-        lastError: errorMessage
-      });
-      failedCounter.inc();
-      await redis.lrem(QUEUE_PROCESSING, 0, opId);
-      const fingerprint = data.fingerprint;
-      if (fingerprint) {
-        await redis.del(DEDUPE_PREFIX + fingerprint);
-      }
-    } else {
-      await redis.hset(opKey, {
-        status: "retry",
-        lastError: errorMessage
-      });
-      await redis.lrem(QUEUE_PROCESSING, 0, opId);
-      await redis.rpush(QUEUE_PENDING, opId);
-    }
-  }
-}
-
-async function workerLoop() {
-  while (true) {
-    const opId = await redis.brpoplpush(QUEUE_PENDING, QUEUE_PROCESSING, 0);
-    if (!opId) {
-      continue;
-    }
-    queueGauge.dec();
-    await processOperation(opId);
-  }
-}
-
-workerLoop().catch((err) => {
-  logger.error({ err }, "worker loop crashed");
-  process.exit(1);
 });
 
 app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
