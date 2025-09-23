@@ -1,288 +1,291 @@
 # RiftLine
 
-> A unified, cross-platform game ecosystem developed by **KlusterTech, Inc.** that merges a high-fidelity Unreal Engine 5 experie
-nce, a connected mobile companion, service-oriented backend systems, and on-chain economies.
+> A unified, cross-platform game ecosystem developed by **KlusterTech, Inc.** that fuses a mobile-first Unreal Engine experience, a connected companion app, authoritative real-time services, and an on-chain economy.
 >
-> **Proprietary Notice** – This repository is confidential KlusterTech property. Access is restricted to approved contributors u
-nder active NDA agreements. See [KlusterTech Proprietary Notice](docs/legal/PROPRIETARY_NOTICE.md) and [Contributor Access & Com
-pliance Policy](docs/compliance/CONTRIBUTOR_ACCESS_POLICY.md).
+> **Proprietary Notice** – This repository is confidential KlusterTech property. Access is restricted to approved contributors under active NDA agreements. See [KlusterTech Proprietary Notice](docs/legal/PROPRIETARY_NOTICE.md) and [Contributor Access & Compliance Policy](docs/compliance/CONTRIBUTOR_ACCESS_POLICY.md).
+
+## At a Glance
+
+- **Mobile-optimised Unreal Engine 5 gameplay** featuring touch-first input mappings, contextual interaction components, a radial action menu, and a diegetic smartphone HUD that mirrors backend wanted/compliance state.
+- **Comprehensive TypeScript API gateway** exposing authentication, player inventory, economy, shard travel, telemetry, compliance, crafting, and on-chain progression endpoints backed by Prisma schemas.
+- **Nakama authoritative modules** that bootstrap cross-shard sessions, persist wanted levels, enforce compliance gates, and drive shard match loops with broadcastable heat escalation.
+- **Domain microservices** covering blockchain event indexing, cross-shard transfer finalisation, and push notification fan-out.
+- **Web3 infrastructure and contracts** including upgradeable Hardhat deployments, Foundry fuzz-tested v2 prototypes, Redis-backed bundler/paymaster services, and deployment scripts that seed the in-game economy.
+- **React Native companion application** delivering guest onboarding, inventory views, marketplace/auction flows, shard selection, and Nakama chat.
+- **Operations surfaces & data tooling** with an admin metrics dashboard, reusable migration scripts, analytics rollups, and Docker/Kubernetes/Terraform scaffolding for reproducible environments.
 
 ## Table of Contents
 
-1. [Executive Summary](#executive-summary)
-2. [Strategic Pillars](#strategic-pillars)
-3. [Repository Layout](#repository-layout)
-4. [Platform Architecture](#platform-architecture)
-   - [Game Clients](#game-clients)
-   - [Backend & Real-time Services](#backend--real-time-services)
+1. [Platform Overview](#platform-overview)
+   - [Unreal Engine Mobile Client](#unreal-engine-mobile-client)
+   - [Backend API Gateway](#backend-api-gateway)
+   - [Real-time Orchestration (Nakama)](#real-time-orchestration-nakama)
+   - [Domain Services & Workers](#domain-services--workers)
    - [Data Platform](#data-platform)
-   - [Web3 & Smart Contracts](#web3--smart-contracts)
-   - [Infrastructure & DevOps](#infrastructure--devops)
-5. [Tooling & Automation](#tooling--automation)
-6. [Environment Setup](#environment-setup)
+   - [Web3 Layer](#web3-layer)
+   - [Mobile Companion Application](#mobile-companion-application)
+   - [Operations & Dashboards](#operations--dashboards)
+2. [Repository Layout](#repository-layout)
+3. [Local Development](#local-development)
    - [Prerequisites](#prerequisites)
-   - [Clone the Repository](#clone-the-repository)
-   - [Bootstrapping Core Services](#bootstrapping-core-services)
-   - [Working with Unreal Engine](#working-with-unreal-engine)
-   - [Mobile Companion Bootstrapping](#mobile-companion-bootstrapping)
-   - [Smart Contract Development](#smart-contract-development)
-   - [Web3 Secrets & Wallets](#web3-secrets--wallets)
-7. [Documentation & Knowledge Base](#documentation--knowledge-base)
-8. [Security, Compliance & Access Control](#security-compliance--access-control)
-9. [Roadmap & Next Steps](#roadmap--next-steps)
-10. [Support & Communication](#support--communication)
-11. [Appendix: README Patch Automation](#appendix-readme-patch-automation)
+   - [Initial Setup](#initial-setup)
+   - [Running Core Services](#running-core-services)
+   - [Client Applications](#client-applications)
+   - [Smart Contract Tooling](#smart-contract-tooling)
+4. [Testing & Quality Gates](#testing--quality-gates)
+5. [Documentation & Knowledge Base](#documentation--knowledge-base)
+6. [Security, Compliance & Operational Notes](#security-compliance--operational-notes)
+7. [Support & Communication](#support--communication)
 
-## Executive Summary
+## Platform Overview
 
-RiftLine is the flagship KlusterTech gaming initiative designed to bridge premium gameplay with persistent digital economies and
- second-screen participation. The monorepo centralizes every layer required to ship and operate the ecosystem: client applicati
-ons, gameplay services, blockchain integrations, infrastructure-as-code, documentation, and operational tooling. Consolidating t
-hese assets ensures tightly orchestrated delivery across engineering, creative, operations, and compliance teams.
+### Unreal Engine Mobile Client
 
-The current codebase provides a robust scaffold with intentional placeholders (`.gitkeep` markers) for major system verticals. T
-hese structures allow teams to collaborate without merge contention while incrementally introducing production-grade components.
+The primary UE5 project (`apps/engine-ue5/`) is configured for mobile hardware targets and ships production-ready gameplay systems:
 
-## Strategic Pillars
+- **Input & UI configuration** – `DefaultEngine.ini` and `DefaultInput.ini` enable virtual joysticks, radial menus, and aspect-aware DPI scaling via a custom `URiftlineUIScalingRule`. Gamepad, touch, and virtual controls are bound to movement, camera, interaction, and the in-game phone toggle.
+- **Session-aware game instance** – `URiftlineGameInstance` resolves API/Nakama hosts from environment variables, maintains the session profile, pushes telemetry/wanted events, and runs periodic heartbeats to the backend.
+- **Contextual interaction framework** – `URiftlineInteractionComponent` traces for `IRiftlineInteractable` actors, aggregates menu options, and broadcasts them to the radial menu widget or auto-invokes single-option interactions.
+- **Diegetic smartphone UI** – `URiftlinePhoneWidget` exposes Blueprint events to render missions, shard state, wallet balances, and compliance status while caching the latest session payload from the game instance.
+- **HUD & player experience** – `ARiftlineHUD` listens to game-instance delegates for wanted/compliance updates, and `ARiftlinePlayerController` orchestrates phone visibility, map telemetry, and input modes for touch-friendly UX.
+- **Gameplay pawn** – `ARiftlinePawn` bundles camera, spring arm, floating movement, and interaction component wiring, providing the base locomotion experience for both mobile and desktop builds.
 
-- **Immersive Core Gameplay** – Unreal Engine 5 project (`apps/engine-ue5/`) anchors the player experience with cinematic visual
-s and responsive combat loops.
-- **Connected Companion Experience** – Native mobile shells (`apps/companion-app/`) support social touchpoints, inventory managem
-ent, and wallet flows synchronized with the core game.
-- **Service-driven Architecture** – Backend services leverage a modular stack (API gateway, Nakama authoritative services, domai
-n microservices) to deliver low-latency multiplayer and live operations.
-- **Web3-enabled Economies** – Hardhat and Foundry workspaces, along with paymaster and Thirdweb scaffolding, provide a pathway f
-or tokenized assets, gas abstraction, and wallet interoperability.
-- **Operational Excellence** – Docker, Kubernetes, Terraform, and CI/CD placeholders codify infrastructure strategy from local d
-ev to production while preserving compliance traceability.
-- **Confidential Collaboration** – Proprietary policies, onboarding workflows, and documentation guardrails ensure the project r
-emains secure and aligned with KlusterTech governance standards.
+### Backend API Gateway
 
-## Repository Layout
+The Express-based gateway (`backend/api-gateway/`) centralises all client-facing APIs with consistent logging, session handling, and contract integration:
 
-| Path | Purpose |
-| ---- | ------- |
-| `apps/engine-ue5/` | Unreal Engine 5 project root containing `Riftline.uproject`, configuration templates, and staged directori
-es for source, plugins, and content. |
-| `apps/companion-app/` | Mobile companion scaffolding with platform-specific shells (`android/`, `ios/`), shared assets, and tes
-t harness placeholders. |
-| `backend/api-gateway/` | TypeScript gateway service blueprint with `package.json`/`tsconfig.json` and reserved folders for src,
- tests, and logging. |
-| `backend/nakama/` | Nakama configuration (`config/nakama.yml`), module placeholders, and migration directories for real-time g
-ameplay logic. |
-| `backend/services/` | Domain microservice stubs (indexer, notifications, webhooks) to support specialized workloads and extens
-ions. |
-| `backend/db/` | Schema, migration, and seed directories establishing the data platform's versioning strategy. |
-| `backend/web3/` | Environment templates for paymaster, bundler, and Thirdweb engine integrations aligned to the RiftLine token
- (`RFT`). |
-| `contracts/hardhat/` | Hardhat workspace targeting Solidity `0.8.23` with scripts, tests, and dependency management. |
-| `contracts/foundry/` | Foundry scaffold (`src/`, `script/`, `test/`, `lib/`) for rapid Solidity prototyping and fuzzing. |
-| `infra/docker/` | Docker Compose stack and container templates powering local development environments. |
-| `infra/k8s/` | Base manifests and environment overlays (`dev/`, `staging/`, `prod/`) for Kubernetes deployments. |
-| `infra/terraform/` | Terraform module and environment stubs for provisioning cloud infrastructure. |
-| `infra/ci/` | Reserved directories for GitHub and GitLab automation pipelines. |
-| `scripts/` | Operational scripts for development workflows, database operations, deployments, and workstation setup. |
-| `docs/` | Knowledge base covering tokenomics, architecture, API, mobile, engine, legal, compliance, and operations guidance. |
-| `assets/` | Centralized repository of creative, UI, font, icon, and legal placeholders shared across products. |
-| `pnpm-workspace.yaml` | Placeholder for future pnpm workspace orchestration across services and clients. |
+- **Authentication** via guest token issuance and SIWE signature verification, with JWT-backed sessions stored in cookies or headers.
+- **Player profile & heartbeat** endpoints that hydrate shard assignments, mutate display names, and persist server heartbeats.
+- **Inventory & economy surfaces** exposing ERC‑1155 balances, property leases, market listings, auction bidding, crafting, and session-key management.
+- **Shard travel workflows** with compliance-aware gating, ticket persistence, and shard reassignment hooks for the cross-shard worker.
+- **Compliance automation** covering KYC lifecycles, AML scans, device attestations, audit logging, and middleware that blocks sensitive actions when risk thresholds are exceeded.
+- **Telemetry ingestion** that stores arbitrary gameplay events, exposes aggregate stats for dashboards, and automatically attributes wallet context via headers or JWTs.
+- **Progression RPC proxies** which invoke on-chain `CharacterSBT` functions for XP sync and loadout updates while honouring contract availability.
+- **Runtime safety** through in-memory rate limiting, typed validation with Zod, pino-based structured logging, and Prisma-backed persistence defined in `prisma/schema.prisma`.
 
-## Platform Architecture
+### Real-time Orchestration (Nakama)
 
-### Game Clients
+Authoritative gameplay logic lives in TypeScript modules under `backend/nakama/modules/ts/`:
 
-- **Unreal Engine 5** – `apps/engine-ue5/` contains the authoritative UE5 project configuration with placeholders for `Config/`,
- `Content/`, `Plugins/`, and `Source/`. Teams should extend these directories with gameplay code, Blueprints, assets, and editor
- settings. Maintain deterministic builds by versioning project settings and documenting platform-specific requirements in `docs/
-engine/`.
-- **Companion Application** – `apps/companion-app/` organizes native shells for Android and iOS alongside shared `assets/`, `app/
-`, and `tests/` directories. The companion experience is designed for social interactions, inventory review, second-screen feat
-ures, and wallet management linked to the UE5 session lifecycle.
+- **Session bootstrap RPC** (`riftline_sessionStart`) stores device/shard metadata, synchronises compliance profiles with the API, and seeds wanted/compliance state in Nakama storage.
+- **Wanted system RPCs** apply, clear, and query heat levels while updating live session variables for HUD display and pushing audit events back to the API.
+- **Shard match handler** enforces wanted-based join filters, tracks player heat accumulation, and broadcasts escalation or idle status messages at the configured tick rate.
+- **Crafting RPC** validates shard/item inputs then relays minting requests to the API for contract execution, preserving recipe metadata.
+- **Cross-shard transfer RPC** records transfer intents that the worker consumes when finalising travel tickets.
+- **Shared services** (config, state, runtime helpers) abstract Nakama storage and session variable updates to keep module code declarative.
 
-### Backend & Real-time Services
+### Domain Services & Workers
 
-- **API Gateway** – `backend/api-gateway/` will expose REST/WebSocket entry points, orchestrate authentication, and mediate betw
-een clients, Nakama, and domain services. Populate `src/` with controllers, middleware, and schema validations as features solid
-ify.
-- **Nakama Runtime** – `backend/nakama/` houses authoritative match logic. The `config/nakama.yml` stub already points to a JavaS
-cript/TypeScript runtime output directory (`./modules/ts/build`). Use this area to author authentication hooks, economy systems,
- match loops, and RPC endpoints.
-- **Domain Services** – `backend/services/` collects specialized workloads such as blockchain indexers, notification dispatchers,
- and webhook processors. Each service directory begins with `.gitkeep` placeholders so teams can select appropriate frameworks a
-nd SLAs without structural churn.
+Supporting services in `backend/services/` handle infrastructure concerns:
+
+- **Indexer** listens to `RentAuction` events, mirrors auction state/bids into Postgres, and hydrates auction listings for the API and companion app.
+- **Cross-shard worker** (`webhooks`) polls pending travel tickets, optionally calls Nakama RPCs to hand off players, and transitions tickets to `finalized`/`failed` status with audit logging.
+- **Notifications service** integrates with Firebase Admin to fan out push reminders to watchers when auctions approach expiry.
 
 ### Data Platform
 
-The `backend/db/` directory provides canonical locations for migrations (`migrations/`), schema definitions (`schemas/`), and se
-d data (`seed/`). Align database changes with application code through versioned migration scripts and use the automation hook i
-n `scripts/db/` to codify repeatable operations (e.g., `migrate.sh`).
+Data management tools sit under `backend/db/` and the API’s Prisma workspace:
 
-### Web3 & Smart Contracts
+- **Prisma schema** models players, shards, auctions, compliance artefacts, AML checks, telemetry, and session keys with indexes tuned for gameplay queries.
+- **SQL migrations** create analytics tables and materialised compliance rollups for dashboards, executed via `scripts/migrate.sh` or `npm run migrate` in `backend/db/`.
+- **Utility scripts** (TypeScript) apply migrations and seeds, enforcing repeatable operations across environments.
 
-- **Hardhat Workspace** – `contracts/hardhat/` is configured for Solidity `0.8.23` with OpenZeppelin dependencies and a default s
-ource path of `./contracts/weapons`. Use `npm run compile` and `npm run test` to iterate locally.
-- **Foundry Workspace** – `contracts/foundry/` mirrors Foundry conventions for fast prototyping and fuzz testing. Populate `foun
-ndry.toml` and `remappings.txt` as modules mature.
-- **Execution Infrastructure** – `backend/web3/` includes `.env.example` templates for the paymaster, bundler, and Thirdweb engin
-e services. These templates define required secrets such as RPC URLs, private keys, and chain identifiers for RiftLine's RFT tok
-en operations.
+### Web3 Layer
 
-### Infrastructure & DevOps
+The blockchain stack spans contracts, deployment scripts, and supportive services:
 
-- **Local Orchestration** – `infra/docker/docker-compose.local.yml` provisions PostgreSQL and Redis containers and serves as the
-foundation for a richer local stack (Nakama, API gateway, Web3 services). Extend the Compose file as services graduate into acti
-ve development.
-- **Kubernetes Blueprints** – `infra/k8s/` offers base manifests (`namespace.yaml`, `ingress.yaml`, `configmap.yaml`, `secret-exa
-mple.yaml`) and environment overlays that will anchor cluster deployments across dev, staging, and production.
-- **Terraform Scaffolding** – `infra/terraform/` organizes infrastructure-as-code modules and environment states to codify cloud
- network, compute, and managed services.
-- **CI/CD Foundations** – `infra/ci/github/` and `infra/ci/gitlab/` directories reserve space for pipeline definitions covering b
-uilds, tests, security scanning, and deployment automation.
+- **Upgradeable core contracts** (Hardhat) implement ERC-4907 leasing (`BusinessLicenseNFT`), property vaulting, `RentAuction`, `Item1155`, `AssetMarketplace`, `Treasury`, and supporting tokens with deployment scripts that wire cross-contract roles and seed weapon/vehicle/apartment templates.
+- **Foundry v2 prototypes** provide focused contracts (`RentAuctionV2`, `TreasuryV2`, `CrossServerGatewayV2`) with fuzz and unit tests that exercise cancellations, nonce security, and treasury accounting.
+- **Bundler service** exposes authenticated ERC-4337 `/rpc` submission, Redis-backed deduplication/queueing, Prometheus metrics, and a worker that retries upstream submissions with exponential backoff.
+- **Paymaster service** enforces scoped API key auth, wallet allowance tracking, sponsorship limits, revocation endpoints, and observability metrics.
+- **Deployment scripts** (`chain/scripts/*.ts`) automate proxy upgrades, shard cap seeding, template definitions, and auction creation against saved deployment manifests.
 
-## Tooling & Automation
+### Mobile Companion Application
 
-- **Development Scripts** – `scripts/dev/start.sh` and `scripts/dev/stop.sh` wrap Docker Compose invocations to consistently boo
-tstrap or teardown the local services stack.
-- **Database Utilities** – `scripts/db/` is the staging area for migration and seeding automation. Expand `migrate.sh` to encapsu
-late your preferred migration toolchain.
-- **Deployment Hooks** – Deployment helpers now live alongside CI workflows; leverage the `.github/workflows` stack instead of the legacy `scripts/deploy/local.sh` stub.
-- **Workstation Setup** – `scripts/ops/wsl-setup.sh` is reserved for Windows Subsystem for Linux onboarding tasks and can be expa
-nded with environment hardening steps.
+The Expo/React Native project (`apps/companion-app/`) mirrors the core gameplay state on mobile devices:
 
-## Environment Setup
+- **Guest onboarding** obtains API guest tokens, stores session context in a lightweight reactive store, and navigates users into the authenticated stack.
+- **Inventory & market views** fetch ERC‑1155 balances and marketplace listings, enabling watchlists, bid placement, and compliance-aware travel requests.
+- **Shard selector & travel** consumes `/shards` data and triggers travel tickets via the API, surfacing pending ticket feedback to the user.
+- **Auctions experience** lists live lease auctions with bid confirmation flows tied to the API gateway.
+- **Faction chat** connects anonymously to Nakama, auto-joins global channels, and streams chat messages in real time.
+- **Configurable API endpoints** via Expo config/environment variables to support staging and production deployments.
+
+### Operations & Dashboards
+
+- **Admin dashboard** (`apps/admin-dashboard/`) is a lightweight React + Vite SPA that polls telemetry, bundler, and paymaster metrics endpoints for live operational insight.
+- **Docker Compose stack** (`infra/docker/docker-compose.local.yml`) spins up Postgres, Redis, Nakama, the API gateway, indexer, notification worker, cross-shard worker, bundler, and paymaster for integrated local testing.
+- **Infrastructure scaffolding** under `infra/k8s/` and `infra/terraform/` seeds Kubernetes manifests and Terraform module structures for eventual production automation.
+
+## Repository Layout
+
+| Path | Summary |
+| ---- | ------- |
+| `apps/engine-ue5/` | Unreal Engine 5 mobile project with gameplay C++ sources, config, and plugin placeholders. |
+| `apps/companion-app/` | Expo/React Native companion with navigation, Nakama chat, marketplace, auctions, and shard travel screens. |
+| `apps/admin-dashboard/` | Operational dashboard surfacing telemetry and service metrics for live monitoring. |
+| `backend/api-gateway/` | Express + Prisma API exposing auth, gameplay, compliance, telemetry, crafting, and progression endpoints. |
+| `backend/nakama/` | TypeScript Nakama runtime modules for session bootstrap, wanted/compliance state, crafting RPCs, and shard matches. |
+| `backend/services/` | Event indexer, notifications dispatcher, and cross-shard worker microservices. |
+| `backend/db/` | Database migration & seed utilities for non-Prisma workloads and analytics rollups. |
+| `backend/web3/` | Bundler, paymaster, and (placeholder) Thirdweb engine services with Redis-backed state and metrics. |
+| `contracts/hardhat/` | Upgradeable Solidity contracts, Hardhat config, and deployment scripts for the on-chain economy. |
+| `contracts/foundry/` | Foundry prototypes and fuzz tests for v2 contract flows and security hardening. |
+| `chain/` | Hardhat scripting workspace for deploying/seeding complete game-state topologies. |
+| `infra/docker/` | Dockerfiles and Compose definitions for local orchestration of backend and web3 services. |
+| `infra/k8s/`, `infra/terraform/`, `infra/ci/` | Kubernetes base manifests, Terraform skeletons, and CI/CD placeholders. |
+| `scripts/` | Operational helpers for starting/stopping the stack and running migrations or workstation setup. |
+| `docs/` | Product, technical, compliance, legal, and operational documentation.
+
+## Local Development
 
 ### Prerequisites
 
-- [Git](https://git-scm.com/) for source control and patch management.
-- [Node.js 18+](https://nodejs.org/) and [npm](https://www.npmjs.com/) for TypeScript services and Hardhat tooling. [pnpm](https
-://pnpm.io/) is optional for monorepo package management once workspaces are defined.
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Compose v2 for local service orchestration.
-- Unreal Engine 5.x with the necessary platform SDKs for Windows/macOS development.
-- Native Android/iOS toolchains (Android Studio, Xcode) for companion application builds.
-- Access to KlusterTech-managed secrets vaults or secure credential stores for Web3 services.
+- [Node.js 18+](https://nodejs.org/) and npm (pnpm optional for workspace management).
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) with Compose v2.
+- [PostgreSQL client tools](https://www.postgresql.org/) for direct database inspection.
+- [Redis CLI](https://redis.io/docs/interact/programmability/redis-cli/) (optional) for queue debugging.
+- [Unreal Engine 5.x](https://www.unrealengine.com/) with mobile SDKs for client builds.
+- Native mobile toolchains: [Xcode](https://developer.apple.com/xcode/) and/or [Android Studio](https://developer.android.com/studio).
+- [Foundry](https://book.getfoundry.sh/) and/or [Hardhat](https://hardhat.org/) for smart contract development.
 
-### Clone the Repository
+### Initial Setup
 
-```bash
-git clone ssh://<your-klustertech-host>/RiftLine.git
-cd RiftLine
-```
-
-Ensure you are operating within the KlusterTech-managed Git hosting environment. Public mirrors and forks are prohibited.
-
-### Bootstrapping Core Services
-
-1. Confirm Docker Desktop (or your preferred container runtime) is running.
-2. Start the local infrastructure baseline:
+1. **Clone the repository** and ensure submodules (if any) are initialised.
+2. **Install dependencies** in the workspaces you plan to touch, e.g.:
    ```bash
-   ./scripts/dev/start.sh
+   npm install --prefix backend/api-gateway
+   npm install --prefix backend/services/indexer
+   npm install --prefix backend/services/webhooks
+   npm install --prefix backend/services/notifications
+   npm install --prefix backend/web3/bundler
+   npm install --prefix backend/web3/paymaster
+   npm install --prefix backend/db
+   npm install --prefix backend/nakama/modules/ts
+   npm install --prefix apps/companion-app
+   npm install --prefix apps/admin-dashboard
+   npm install --prefix contracts/hardhat
    ```
-   This command runs `docker compose -f infra/docker/docker-compose.local.yml up -d`, provisioning PostgreSQL and Redis.
-3. When you finish your session, stop the stack to conserve resources:
+3. **Configure environment variables**. Copy `.env.example` files where provided or define the required secrets (JWT, session secret, RPC URLs, operator keys, Firebase credentials, etc.) for each service.
+4. **Run database migrations**:
    ```bash
-   ./scripts/dev/stop.sh
+   ./scripts/migrate.sh
+   # or use the standalone tooling
+   npm run migrate --prefix backend/db
    ```
-4. Extend the Compose file with additional services (e.g., Nakama, API gateway) as functionality comes online.
 
-### Working with Unreal Engine
+### Running Core Services
 
-- Open `apps/engine-ue5/Riftline.uproject` using the approved Unreal Engine build.
-- Configure platform-specific settings (input, rendering, packaging) within the `Config/` directory and commit deterministic chan
-ge sets.
-- Coordinate binary asset versioning using Git LFS if large media files are introduced. Consult `docs/engine/` for team norms whe
-n populated.
+- **Local stack orchestration**
+  ```bash
+  ./scripts/dev/start.sh    # docker compose up
+  ./scripts/dev/stop.sh     # docker compose down
+  ```
+  The Compose stack exposes Postgres (5432), Redis (6379), Nakama (7350/7351), API gateway (8080), bundler (4337), and paymaster (3001) by default.
 
-### Mobile Companion Bootstrapping
+- **API gateway**
+  ```bash
+  npm run dev --prefix backend/api-gateway
+  # production build
+  npm run build --prefix backend/api-gateway
+  npm run start --prefix backend/api-gateway
+  ```
 
-- The `apps/companion-app/` directory contains `.gitkeep` placeholders for Android (`android/`), iOS (`ios/`), shared `app/`, `a
-ssets/`, and `tests/` trees. Introduce your framework of choice (e.g., React Native, Kotlin Multiplatform, Swift) while maintain
-ing consistent project structure.
-- Document build steps, dependency managers, and integration tests under `docs/mobile/` as they are established.
+- **Nakama modules**
+  ```bash
+  npm run build --prefix backend/nakama/modules/ts
+  # Mount ./build into Nakama via docker-compose.local.yml or copy to your Nakama installation.
+  ```
 
-### Smart Contract Development
+- **Domain services** (run as needed for local testing)
+  ```bash
+  npm run dev --prefix backend/services/indexer
+  npm run dev --prefix backend/services/webhooks
+  npm run dev --prefix backend/services/notifications
+  ```
 
-```bash
-cd contracts/hardhat
-npm install
-npm run compile
-npm run test
-```
+- **Bundler & paymaster**
+  ```bash
+  npm run dev --prefix backend/web3/bundler
+  npm run dev --prefix backend/web3/paymaster
+  ```
+  Both services require Redis and expose `/health` and `/metrics` endpoints for readiness probes.
 
-Use the Foundry scaffold (`contracts/foundry/`) when you need fast Solidity prototyping or fuzz testing. Keep deployment scripts,
- ABI outputs, and audits versioned within their respective directories.
+### Client Applications
 
-### Web3 Secrets & Wallets
+- **Unreal Engine**
+  1. Open `apps/engine-ue5/Riftline.uproject` in UE5.
+  2. Ensure the project detects the `Riftline` module; regenerate project files if needed.
+  3. Set environment overrides (`RIFTLINE_API_URL`, `RIFTLINE_NAKAMA_URL`) when running PIE or packaging.
 
-1. Copy environment templates before populating secrets:
-   ```bash
-   cp backend/web3/paymaster/.env.example backend/web3/paymaster/.env
-   cp backend/web3/bundler/.env.example backend/web3/bundler/.env
-   cp backend/web3/thirdweb-engine/.env.example backend/web3/thirdweb-engine/.env
-   ```
-2. Populate values such as `RPC_URL`, `PAYMASTER_PRIVATE_KEY`, `ENTRYPOINT_ADDR`, `BUNDLER_PRIVATE_KEY`, `THIRDWEB_SECRET_KEY`,
- and `CHAIN_ID` according to the network you are targeting.
-3. Store populated `.env` files in approved secret management solutions. Never commit secrets or distribute them over unauthorize
-d channels.
+- **Companion app (Expo)**
+  ```bash
+  npm run start   --prefix apps/companion-app
+  npm run android --prefix apps/companion-app
+  npm run ios     --prefix apps/companion-app
+  ```
+  Configure `EXPO_PUBLIC_API` and `EXPO_PUBLIC_NAKAMA_*` variables to point at your local stack.
+
+- **Admin dashboard**
+  ```bash
+  npm run dev --prefix apps/admin-dashboard
+  ```
+  By default the dashboard expects bundler metrics on `http://localhost:4337/metrics`, paymaster metrics on `http://localhost:3001/metrics`, and telemetry stats on `http://localhost:8080/telemetry/stats`.
+
+### Smart Contract Tooling
+
+- **Hardhat workspace**
+  ```bash
+  npm run compile --prefix contracts/hardhat
+  npm run test    --prefix contracts/hardhat
+  npx hardhat run --network localhost chain/scripts/00_deploy_core.ts
+  ```
+
+- **Foundry workspace**
+  ```bash
+  forge install               # if new environment
+  forge fmt
+  forge test -C contracts/foundry
+  ```
+
+- **Deployment orchestration**
+  Use the scripts in `chain/scripts/` (00–03) to deploy the core contracts, seed shard caps, define templates, and mint starter inventory. Each script writes to `chain/deployments/<network>.json` for downstream services (API/indexer/bundler) to consume.
+
+## Testing & Quality Gates
+
+- **API gateway unit tests**: `npm test --prefix backend/api-gateway` (Vitest + Supertest).
+- **Type checking**: `npm run build` (gateway/services) and `npm run check --prefix apps/companion-app` for React Native typings.
+- **Foundry fuzz/unit tests**: `forge test -C contracts/foundry` for v2 contract behaviours.
+- **Hardhat E2E tests**: add tests under `contracts/hardhat/test/` and run `npm run test --prefix contracts/hardhat`.
+- **Manual service verification**: hit `/health` and `/metrics` endpoints on API, bundler, and paymaster; inspect Docker logs via `docker compose logs -f <service>`.
 
 ## Documentation & Knowledge Base
 
-The `docs/` directory is the canonical knowledge repository. Key areas include:
+The `docs/` directory aggregates deep dives by discipline:
 
-- `docs/tokenomics/` – Token overview (`README.md`) and placeholders for allocation modeling, vesting schedules, and economy sim
-ulations.
-- `docs/architecture/`, `docs/api/`, `docs/engine/`, `docs/mobile/`, `docs/contracts/`, `docs/ops/` – Domain-specific folders fo
-r technical designs, runbooks, and playbooks.
-- `docs/legal/` – Home to the [KlusterTech Proprietary Notice](docs/legal/PROPRIETARY_NOTICE.md) and future legal guidance (e.g.
-, licensing terms, partner agreements).
-- `docs/compliance/` – Contains the [Contributor Access & Compliance Policy](docs/compliance/CONTRIBUTOR_ACCESS_POLICY.md) and w
-ill expand to include security, privacy, and audit documentation.
+- `docs/architecture/` – system diagrams, gameplay-to-backend flows, and service contracts.
+- `docs/api/` – REST/RPC references, authentication schemes, and payload conventions.
+- `docs/mobile/` & `docs/engine/` – client-specific guidelines, asset workflows, UX specs.
+- `docs/contracts/` & `docs/tokenomics/` – smart contract interfaces, economic models.
+- `docs/compliance/` & `docs/legal/` – governance policies, contributor onboarding, and legal notices.
+- `docs/ops/` – operational runbooks, incident response, and observability standards.
 
-Keep documentation synchronized with implementation progress. Every feature, service, or workflow should be reflected in the kno
-wledge base to support rapid onboarding and audit readiness.
+Always cross-reference feature branches with the relevant documentation section and update as part of your change set.
 
-## Security, Compliance & Access Control
+## Security, Compliance & Operational Notes
 
-- Access to this repository is limited to team members and partners approved by KlusterTech leadership.
-- Every contributor must review and comply with both the [Proprietary Notice](docs/legal/PROPRIETARY_NOTICE.md) and the [Contribu
-tor Access & Compliance Policy](docs/compliance/CONTRIBUTOR_ACCESS_POLICY.md) prior to committing code.
-- Secrets, credentials, and private keys must be managed through KlusterTech-sanctioned secret management systems.
-- Notify the security team immediately upon detecting suspicious activity, credential exposure, or device compromise.
-- External distribution, public discussions, or showcasing RiftLine materials outside authorized channels is strictly prohibited.
-
-## Roadmap & Next Steps
-
-The repository currently provides a structural foundation. Upcoming milestones include:
-
-1. **Gameplay & Content** – Implement core gameplay loops, progression systems, and content pipelines within `apps/engine-ue5/`.
-2. **Companion Experience** – Stand up mobile companion features, push notifications, and wallet UX across Android/iOS shells.
-3. **Service Implementations** – Build out API gateway routes, Nakama modules, and microservices for matchmaking, inventory, ana
-lytics, and live operations.
-4. **Data & Observability** – Introduce migration tooling, seed data, telemetry pipelines, and monitoring dashboards.
-5. **Web3 Integration** – Finalize smart contract deployments, paymaster flows, and wallet abstraction layers.
-6. **Infrastructure Hardening** – Expand Docker, Kubernetes, Terraform, and CI/CD automation into fully managed environments wit
-h observability and incident response playbooks.
-7. **Compliance Maturity** – Populate legal, compliance, and operational documentation to meet internal audit and partner requir
-ements.
-
-Each milestone should be accompanied by updates to documentation, automation scripts, and testing coverage.
+- **Compliance guardrails** are enforced at the API level through `requireCompliantPlayer`, AML/KYC workflows, audit logs, and device attestation persistence.
+- **Session security** leverages JWTs with explicit wallet/id claims, SIWE signature verification, and in-memory nonce tracking.
+- **Rate limiting** protects all Express routes from burst abuse; use an external limiter (Redis/NGINX) for production workloads.
+- **Secrets management** should migrate from `.env` files to Vault/ASM integrations before production deployments; placeholders exist under `infra/k8s/base/secret-example.yaml`.
+- **Observability** is provided by pino logs and Prometheus metrics on bundler/paymaster; extend to the API via OpenTelemetry or pino transports as needed.
+- **Infrastructure automation** is intentionally scaffolded—fill in Terraform modules, Kubernetes overlays, and CI pipelines before attempting production rollout.
 
 ## Support & Communication
 
-- Engage via KlusterTech's private collaboration channels (e.g., Slack, Teams) using organization-managed accounts.
-- For access requests or offboarding, coordinate with the project sponsor and follow the [Contributor Access & Compliance Policy
-](docs/compliance/CONTRIBUTOR_ACCESS_POLICY.md).
-- For legal or security inquiries, contact the KlusterTech legal/security steering group through approved escalation paths.
-- For build or operational issues, file tickets in the internal project management system referencing affected directories and se
-rvices.
+- Engineering discussions: `#riftline-engineering` (Slack) or the internal Discourse space.
+- Incident response: follow runbooks in `docs/ops/incident_response.md` and page the on-call rotation.
+- Knowledge sharing: document findings in `docs/` and surface major updates in the fortnightly platform sync.
+- Access requests or compliance concerns: contact the Governance team referenced in the [Contributor Access & Compliance Policy](docs/compliance/CONTRIBUTOR_ACCESS_POLICY.md).
 
-## Appendix: README Patch Automation
-
-To reapply this README update (e.g., when bootstrapping a new clone), use the helper script located at `scripts/maintenance/apply
-_readme_update.sh`. The script invokes `git apply` with the curated patch stored alongside it, ensuring the documentation stays s
-ync across environments.
-
-```bash
-./scripts/maintenance/apply_readme_update.sh
-```
-
-> The patch script is intended for controlled environments. Verify your working tree is clean before running it, and review the
-patch contents to confirm compatibility with your branch state.
+By consolidating gameplay, backend, web3, and operational tooling in a single monorepo, RiftLine enables tightly coupled iteration across teams while maintaining the guardrails required for a regulated, live-service economy.
