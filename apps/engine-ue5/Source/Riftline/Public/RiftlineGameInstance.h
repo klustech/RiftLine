@@ -68,6 +68,7 @@ private:
     TWeakObjectPtr<URiftlinePhoneWidget> PhoneWidget;
     FRiftlineWalletView WalletView;
     TArray<FText> ActiveMissions;
+    TArray<float> FpsSamples;
 
     FTimerHandle HeartbeatTimerHandle;
 
@@ -77,4 +78,7 @@ private:
     void HeartbeatTick();
 
     void SubmitWantedTelemetry(const FRiftlineWantedState& WantedState);
+    void EmitClientPerformanceTelemetry();
+    void EmitThermalTelemetry();
+    FString DescribeThermalState() const;
 };

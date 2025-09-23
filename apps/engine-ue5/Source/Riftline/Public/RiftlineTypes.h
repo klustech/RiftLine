@@ -13,6 +13,16 @@ enum class ERiftlineWantedLevel : uint8
     Critical UMETA(DisplayName = "Critical")
 };
 
+UENUM(BlueprintType)
+enum class ERiftlinePhoneTab : uint8
+{
+    Shards    UMETA(DisplayName = "Shards"),
+    Map       UMETA(DisplayName = "Map"),
+    Auctions  UMETA(DisplayName = "Auctions"),
+    Inventory UMETA(DisplayName = "Inventory"),
+    Messages  UMETA(DisplayName = "Messages")
+};
+
 USTRUCT(BlueprintType)
 struct FRiftlineWantedState
 {
@@ -113,6 +123,32 @@ struct FRiftlineSessionProfile
     UPROPERTY(BlueprintReadOnly)
     FRiftlineComplianceState Compliance;
 };
+
+USTRUCT(BlueprintType)
+struct FRiftlineAuctionRow
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 AuctionId = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    FString Title;
+
+    UPROPERTY(BlueprintReadOnly)
+    FString AssetType;
+
+    UPROPERTY(BlueprintReadOnly)
+    FString PayToken;
+
+    UPROPERTY(BlueprintReadOnly)
+    int32 SecondsRemaining = 0;
+
+    UPROPERTY(BlueprintReadOnly)
+    FString Price;
+};
+
+using FAuctionRow = FRiftlineAuctionRow;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FRiftlineWantedDelegate, const FRiftlineWantedState&, State);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FRiftlineComplianceDelegate, const FRiftlineComplianceState&, State);

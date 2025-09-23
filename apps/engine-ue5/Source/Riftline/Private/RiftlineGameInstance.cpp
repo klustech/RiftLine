@@ -1,10 +1,14 @@
 #include "RiftlineGameInstance.h"
-#include "Riftline.h"
-#include "RiftlinePhoneWidget.h"
-#include "TimerManager.h"
+
+#include "Algo/Sort.h"
+#include "Engine/Engine.h"
+#include "HAL/PlatformProperties.h"
 #include "HttpModule.h"
 #include "Interfaces/IHttpRequest.h"
 #include "Interfaces/IHttpResponse.h"
+#include "Riftline.h"
+#include "RiftlinePhoneWidget.h"
+#include "TimerManager.h"
 
 namespace
 {
@@ -29,6 +33,7 @@ URiftlineGameInstance::URiftlineGameInstance()
 {
     ApiBaseUrl = TEXT("http://localhost:8080");
     NakamaUrl = TEXT("http://localhost:7350");
+    FpsSamples.Reserve(120);
 }
 
 void URiftlineGameInstance::Init()
@@ -217,17 +222,18 @@ void URiftlineGameInstance::HeartbeatTick()
     }
 
     const FString Url = ComposeEndpoint(ApiBaseUrl, TEXT("/players/heartbeat"));
-    if (Url.IsEmpty())
+    if (!Url.IsEmpty())
     {
-        return;
+        TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
+        Request->SetURL(Url);
+        Request->SetVerb(TEXT("POST"));
+        Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
+        Request->SetContentAsString(FString::Printf(TEXT("{\"playerId\":\"%s\",\"shardId\":%d}"), *Session.PlayerId, Session.CurrentShard.ShardId));
+        Request->ProcessRequest();
     }
 
-    TSharedRef<IHttpRequest, ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-    Request->SetURL(Url);
-    Request->SetVerb(TEXT("POST"));
-    Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-    Request->SetContentAsString(FString::Printf(TEXT("{\"playerId\":\"%s\",\"shardId\":%d}"), *Session.PlayerId, Session.CurrentShard.ShardId));
-    Request->ProcessRequest();
+    EmitClientPerformanceTelemetry();
+    EmitThermalTelemetry();
 }
 
 void URiftlineGameInstance::SubmitWantedTelemetry(const FRiftlineWantedState& WantedState)
@@ -242,4 +248,80 @@ void URiftlineGameInstance::SubmitWantedTelemetry(const FRiftlineWantedState& Wa
     Properties.Add(TEXT("expires"), WantedState.ExpiresAt.ToIso8601());
     Properties.Add(TEXT("heat"), FString::SanitizeFloat(WantedState.Heat));
     PushTelemetryEvent(TEXT("wanted_state"), Properties);
+}
+
+void URiftlineGameInstance::EmitClientPerformanceTelemetry()
+{
+    if (!GEngine)
+    {
+        return;
+    }
+
+    const float CurrentFps = GEngine->GetAverageFPS();
+    if (CurrentFps <= 0.f || !FMath::IsFinite(CurrentFps))
+    {
+        return;
+    }
+
+    FpsSamples.Add(CurrentFps);
+    const int32 MaxSamples = 120;
+    if (FpsSamples.Num() > MaxSamples)
+    {
+        const int32 Excess = FpsSamples.Num() - MaxSamples;
+        FpsSamples.RemoveAt(0, Excess);
+    }
+
+    float Sum = 0.f;
+    for (float Sample : FpsSamples)
+    {
+        Sum += Sample;
+    }
+
+    const float Average = Sum / FpsSamples.Num();
+
+    TArray<float> SortedSamples = FpsSamples;
+    SortedSamples.Sort();
+
+    float Percentile95 = SortedSamples.Last();
+    if (SortedSamples.Num() > 1)
+    {
+        const float Position = 0.95f * (SortedSamples.Num() - 1);
+        const int32 LowerIndex = FMath::FloorToInt(Position);
+        const int32 UpperIndex = FMath::CeilToInt(Position);
+
+        if (LowerIndex >= 0 && UpperIndex < SortedSamples.Num())
+        {
+            if (LowerIndex == UpperIndex)
+            {
+                Percentile95 = SortedSamples[LowerIndex];
+            }
+            else
+            {
+                const float Fraction = Position - LowerIndex;
+                Percentile95 = FMath::Lerp(SortedSamples[LowerIndex], SortedSamples[UpperIndex], Fraction);
+            }
+        }
+    }
+
+    TMap<FString, FString> Properties;
+    Properties.Add(TEXT("avg"), FString::Printf(TEXT("%.2f"), Average));
+    Properties.Add(TEXT("pct95"), FString::Printf(TEXT("%.2f"), Percentile95));
+    PushTelemetryEvent(TEXT("client.fps"), Properties);
+}
+
+void URiftlineGameInstance::EmitThermalTelemetry()
+{
+    TMap<FString, FString> Properties;
+    Properties.Add(TEXT("state"), DescribeThermalState());
+    Properties.Add(TEXT("platform"), FString(FPlatformProperties::IniPlatformName()));
+    PushTelemetryEvent(TEXT("client.thermal"), Properties);
+}
+
+FString URiftlineGameInstance::DescribeThermalState() const
+{
+#if PLATFORM_ANDROID
+    return TEXT("android:unknown");
+#else
+    return TEXT("unknown");
+#endif
 }
