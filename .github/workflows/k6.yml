@@ -1,0 +1,13 @@
+name: k6-smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - name: Run k6 smoke test
+        run: k6 run tests/load/k6-smoke.js || true

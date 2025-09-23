@@ -22,6 +22,9 @@ import telemetryRoutes from "./routes/telemetry";
 import sessionKeyRoutes from "./routes/sessionKeys";
 import craftingRoutes from "./routes/crafting";
 import progressionRoutes from "./routes/progression";
+import wantedRoutes from "./routes/wanted";
+import streamingRoutes from "./routes/streaming";
+import adminRoutes from "./routes/admin";
 
 const config = loadConfig();
 const app = express();
@@ -54,6 +57,9 @@ app.use("/session-keys", sessionKeyRoutes);
 app.use("/wallet", walletRoutes);
 app.use("/craft", craftingRoutes);
 app.use("/progression", progressionRoutes);
+app.use("/wanted", wantedRoutes);
+app.use("/streaming", streamingRoutes);
+app.use("/admin", adminRoutes);
 
 app.use(errorHandler);
 
