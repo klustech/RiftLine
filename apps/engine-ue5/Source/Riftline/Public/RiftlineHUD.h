@@ -5,6 +5,10 @@
 #include "RiftlineTypes.h"
 #include "RiftlineHUD.generated.h"
 
+class URiftlineHUDWidget;
+class URiftlineInteractionComponent;
+struct FRiftlineInteractionHit;
+
 UCLASS()
 class RIFTLINE_API ARiftlineHUD : public AHUD
 {
@@ -19,10 +23,28 @@ public:
     UFUNCTION(BlueprintImplementableEvent, Category = "Riftline|HUD")
     void OnComplianceUpdated(const FRiftlineComplianceState& State);
 
+protected:
+    UPROPERTY(EditDefaultsOnly, Category = "Riftline|HUD")
+    TSubclassOf<URiftlineHUDWidget> HUDWidgetClass;
+
 private:
+    UPROPERTY(Transient)
+    URiftlineHUDWidget* HUDWidget;
+
+    TWeakObjectPtr<URiftlineInteractionComponent> InteractionComponent;
+
     UFUNCTION()
     void HandleWanted(const FRiftlineWantedState& State);
 
     UFUNCTION()
     void HandleCompliance(const FRiftlineComplianceState& State);
+
+    UFUNCTION()
+    void HandlePawnChanged(APawn* NewPawn);
+
+    UFUNCTION()
+    void HandleInteractionOptions(const FRiftlineInteractionHit& Hit);
+
+    UFUNCTION()
+    void HandleRadialEntrySelected(FName EntryId);
 };

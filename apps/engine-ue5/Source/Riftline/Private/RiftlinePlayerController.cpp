@@ -1,5 +1,5 @@
 #include "RiftlinePlayerController.h"
-#include "Blueprint/WidgetBlueprintLibrary.h"
+
 #include "RiftlineGameInstance.h"
 #include "RiftlinePhoneWidget.h"
 
@@ -33,6 +33,8 @@ void ARiftlinePlayerController::BeginPlay()
             {
                 GI->RegisterPhoneWidget(PhoneWidget);
             }
+
+            PhoneWidget->NotifyPhoneVisible(false);
         }
     }
 
@@ -48,21 +50,16 @@ void ARiftlinePlayerController::SetupInputComponent()
 
 void ARiftlinePlayerController::TogglePhone()
 {
-    bPhoneVisible = !bPhoneVisible;
-    if (PhoneWidget)
-    {
-        PhoneWidget->SetVisibility(bPhoneVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-    }
-    UpdateInputMode();
+    SetPhoneVisibility(!bPhoneVisible, TEXT("toggle"));
 }
 
 void ARiftlinePlayerController::OpenMap()
 {
-    if (URiftlineGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance<URiftlineGameInstance>() : nullptr)
+    SetPhoneVisibility(true, TEXT("map_key"));
+
+    if (PhoneWidget)
     {
-        TMap<FString, FString> Properties;
-        Properties.Add(TEXT("source"), TEXT("phone"));
-        GI->PushTelemetryEvent(TEXT("open_map"), Properties);
+        PhoneWidget->SetActiveTab(ERiftlinePhoneTab::Map);
     }
 }
 
@@ -81,5 +78,37 @@ void ARiftlinePlayerController::UpdateInputMode()
         FInputModeGameOnly Mode;
         SetInputMode(Mode);
         SetShowMouseCursor(false);
+    }
+}
+
+void ARiftlinePlayerController::SetPhoneVisibility(bool bVisible, const FString& SourceTag)
+{
+    if (bPhoneVisible == bVisible)
+    {
+        if (PhoneWidget)
+        {
+            PhoneWidget->SetVisibility(bVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+        }
+        return;
+    }
+
+    bPhoneVisible = bVisible;
+
+    if (PhoneWidget)
+    {
+        PhoneWidget->SetVisibility(bPhoneVisible ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+        PhoneWidget->NotifyPhoneVisible(bPhoneVisible);
+    }
+
+    UpdateInputMode();
+
+    if (URiftlineGameInstance* GI = GetWorld() ? GetWorld()->GetGameInstance<URiftlineGameInstance>() : nullptr)
+    {
+        TMap<FString, FString> Properties;
+        if (!SourceTag.IsEmpty())
+        {
+            Properties.Add(TEXT("source"), SourceTag);
+        }
+        GI->PushTelemetryEvent(bPhoneVisible ? TEXT("ui.phone.open") : TEXT("ui.phone.close"), Properties);
     }
 }

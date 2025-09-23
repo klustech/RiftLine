@@ -31,4 +31,5 @@ private:
     void TogglePhone();
     void OpenMap();
     void UpdateInputMode();
+    void SetPhoneVisibility(bool bVisible, const FString& SourceTag);
 };

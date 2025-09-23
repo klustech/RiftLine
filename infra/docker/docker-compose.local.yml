@@ -1,4 +1,5 @@
 version: "3.9"
+
 services:
   db:
     image: postgres:15
@@ -7,21 +8,54 @@ services:
       POSTGRES_DB: riftline
     ports:
       - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - backend
+
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
   nakama:
     image: heroiclabs/nakama:3.22.0
     command: ["--socket.server_key", "riftline-dev"]
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "7350:7350"
       - "7351:7351"
     volumes:
       - ../../backend/nakama/modules/ts/build:/nakama/data/modules
       - ../../backend/nakama/config/nakama.yml:/nakama/data/nakama.yml
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:7350/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+      - realtime
+
   api:
     build:
       context: ../../backend/api-gateway
@@ -38,7 +72,24 @@ services:
     ports:
       - "8080:8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nakama:
+        condition: service_healthy
+      bundler:
+        condition: service_healthy
+      paymaster:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
   indexer:
     build:
       context: ../../backend/services/indexer
@@ -49,7 +100,16 @@ services:
     volumes:
       - ../../chain/deployments:/app/deployments:ro
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'process.exit(0)'"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
   xshard:
     build:
       context: ../../backend/services/webhooks
@@ -57,15 +117,34 @@ services:
       DATABASE_URL: postgres://postgres:dev@db:5432/riftline
       NAKAMA_RPC_URL: http://nakama:7350/v2/rpc
     depends_on:
-      - db
-      - nakama
+      db:
+        condition: service_healthy
+      nakama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'process.exit(0)'"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
   notifications:
     build:
       context: ../../backend/services/notifications
     environment:
       DATABASE_URL: postgres://postgres:dev@db:5432/riftline
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'process.exit(0)'"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+    networks:
+      - backend
+
   bundler:
     build:
       context: ../../backend/web3/bundler
@@ -74,6 +153,17 @@ services:
       BUNDLER_API_KEY: devkey
     ports:
       - "4337:4337"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:4337/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
   paymaster:
     build:
       context: ../../backend/web3/paymaster
@@ -82,3 +172,21 @@ services:
       PAYMASTER_API_KEY: devkey
     ports:
       - "3001:3001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+networks:
+  backend:
+  realtime:
+
+volumes:
+  postgres-data:
+  redis-data:
