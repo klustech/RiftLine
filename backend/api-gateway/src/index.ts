@@ -15,6 +15,8 @@ import auctionRoutes from "./routes/auctions";
 import shardRoutes from "./routes/shards";
 import travelRoutes from "./routes/travel";
 import complianceRoutes from "./routes/compliance";
+import telemetryRoutes from "./routes/telemetry";
+import sessionKeyRoutes from "./routes/sessionKeys";
 
 const config = loadConfig();
 const app = express();
@@ -40,6 +42,8 @@ app.use("/auctions", auctionRoutes);
 app.use("/shards", shardRoutes);
 app.use("/travel", travelRoutes);
 app.use("/compliance", complianceRoutes);
+app.use("/telemetry", telemetryRoutes);
+app.use("/session-keys", sessionKeyRoutes);
 
 app.use(errorHandler);
 

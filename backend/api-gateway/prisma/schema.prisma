@@ -266,3 +266,28 @@ model MarketWatch {
 
   @@unique([listingId, wallet])
 }
+
+model TelemetryEvent {
+  id        String   @id @default(cuid())
+  wallet    String?
+  kind      String
+  shardId   Int?
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([wallet])
+  @@index([kind])
+}
+
+model SessionKey {
+  id        String   @id @default(cuid())
+  wallet    String
+  scope     String
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([wallet])
+  @@index([scope])
+  @@index([expiresAt])
+}
