@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-gateway
+  namespace: riftline
+  labels:
+    app: api-gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: api-gateway
+  template:
+    metadata:
+      labels:
+        app: api-gateway
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/riftline/api-gateway:latest
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: riftline-config
+            - secretRef:
+                name: riftline-secrets
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-gateway
+  namespace: riftline
+spec:
+  selector:
+    app: api-gateway
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bundler
+  namespace: riftline
+  labels:
+    app: bundler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bundler
+  template:
+    metadata:
+      labels:
+        app: bundler
+    spec:
+      containers:
+        - name: bundler
+          image: ghcr.io/riftline/bundler:latest
+          envFrom:
+            - configMapRef:
+                name: riftline-config
+            - secretRef:
+                name: riftline-secrets
+          ports:
+            - containerPort: 4337
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4337
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bundler
+  namespace: riftline
+spec:
+  selector:
+    app: bundler
+  ports:
+    - port: 4337
+      targetPort: 4337
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: paymaster
+  namespace: riftline
+  labels:
+    app: paymaster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: paymaster
+  template:
+    metadata:
+      labels:
+        app: paymaster
+    spec:
+      containers:
+        - name: paymaster
+          image: ghcr.io/riftline/paymaster:latest
+          envFrom:
+            - configMapRef:
+                name: riftline-config
+            - secretRef:
+                name: riftline-secrets
+          ports:
+            - containerPort: 3001
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: paymaster
+  namespace: riftline
+spec:
+  selector:
+    app: paymaster
+  ports:
+    - port: 3001
+      targetPort: 3001

@@ -1,12 +1,13 @@
 import { Router } from "express";
 import { prisma } from "../services/db";
 import { requireAuth } from "../middleware/auth";
+import { requireCompliantPlayer } from "../middleware/compliance";
 import { travelRequestSchema } from "../validators/market";
 import { serializeBigInt } from "../utils/serialization";
 
 const router = Router();
 
-router.post("/request", requireAuth, async (req, res, next) => {
+router.post("/request", requireAuth, requireCompliantPlayer, async (req, res, next) => {
   try {
     const parsed = travelRequestSchema.parse(req.body ?? {});
     const toShard = typeof parsed.toShard === "string" ? Number(parsed.toShard) : parsed.toShard;

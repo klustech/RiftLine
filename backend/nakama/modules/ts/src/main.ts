@@ -1,26 +1,23 @@
 import type { nkruntime } from "@heroiclabs/nakama-runtime";
+import { registerSessionRpc } from "./rpc/session";
+import { registerWantedRpcs } from "./rpc/wanted";
+import { registerCraftingRpc } from "./economy/crafting";
+import { registerShardMatch } from "./match/shard";
 
-const MODULE = "riftline";
+const Init: nkruntime.InitModule = (ctx) => {
+  const session = registerSessionRpc(ctx);
+  ctx.registerRpc(session.id, session.handler);
 
-const rpcOwnership: nkruntime.RpcFunction = (_ctx, logger, _nk, payload) => {
-  logger.debug(`verify ownership payload=${payload}`);
-  return JSON.stringify({ ok: true });
+  const wantedRpcs = registerWantedRpcs(ctx);
+  for (const rpc of wantedRpcs) {
+    ctx.registerRpc(rpc.id, rpc.handler);
+  }
+
+  const craftRpc = registerCraftingRpc(ctx);
+  ctx.registerRpc(craftRpc.id, craftRpc.handler);
+
+  const shardMatch = registerShardMatch(ctx);
+  ctx.registerMatch(shardMatch.id, shardMatch.handler);
 };
 
-const rpcSessionStart: nkruntime.RpcFunction = (_ctx, logger, _nk, payload) => {
-  logger.info(`session start ${payload}`);
-  return JSON.stringify({ ok: true });
-};
-
-const rpcProgress: nkruntime.RpcFunction = (_ctx, logger, _nk, payload) => {
-  logger.debug(`progress payload=${payload}`);
-  return JSON.stringify({ ok: true });
-};
-
-const InitModule: nkruntime.InitModule = (ctx) => {
-  ctx.registerRpc(`${MODULE}_verifyOwnership`, rpcOwnership);
-  ctx.registerRpc(`${MODULE}_sessionStart`, rpcSessionStart);
-  ctx.registerRpc(`${MODULE}_grantProgress`, rpcProgress);
-};
-
-export { InitModule as Init };
+export { Init };

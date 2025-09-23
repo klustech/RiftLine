@@ -1,0 +1,19 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.3",
+  "Category": "", 
+  "Description": "Riftline mobile-first runtime module",
+  "Modules": [
+    {
+      "Name": "Riftline",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "TargetPlatforms": [
+    "Android",
+    "IOS",
+    "Win64",
+    "Mac"
+  ]
+}
